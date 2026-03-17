@@ -8,7 +8,7 @@ describe("resolveConfig", () => {
       SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
       SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
       SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
-      SQL_ANTIPATTERN_DETECTOR_FORMAT: "json",
+      SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
       SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
       SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
       OPENROUTER_API_KEY: "env-key",
@@ -17,7 +17,7 @@ describe("resolveConfig", () => {
     expect(config.model).toBe("openrouter:openai/gpt-4.1");
     expect(config.concurrency).toBe(4);
     expect(config.retries).toBe(3);
-    expect(config.format).toBe("json");
+    expect(config.format).toBe("csv");
     expect(config.output).toBe("reports/findings.json");
     expect(config.debug).toBe(true);
     expect(config.apiKeys.openrouter).toBe("env-key");

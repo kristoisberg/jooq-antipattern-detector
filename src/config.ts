@@ -1,7 +1,7 @@
 import convict from "convict";
 import type { Command } from "commander";
 
-export type OutputFormat = "text" | "json";
+export type OutputFormat = "text" | "json" | "csv";
 
 export type AppConfig = {
   model: string;
@@ -62,7 +62,7 @@ const configSchema: convict.Schema<ConfigProperties> = {
   },
   format: {
     doc: "Output format",
-    format: ["text", "json"],
+    format: ["text", "json", "csv"],
     default: "text",
     env: "SQL_ANTIPATTERN_DETECTOR_FORMAT",
     arg: "format",
@@ -138,7 +138,7 @@ const CLI_OPTION_DEFINITIONS: CliOptionDefinition[] = [
   },
   {
     flags: "--format <format>",
-    description: "Output format: text or json",
+    description: "Output format: text, json, or csv",
   },
   {
     flags: "--output <file>",

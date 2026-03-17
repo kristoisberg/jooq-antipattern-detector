@@ -1,6 +1,6 @@
 # SQL Antipattern Detector
 
-LLM-backed command line tool for detecting SQL antipatterns in Java projects that use jOOQ. The detection flow is based on the logic in [`08-test-prompting-strategy.ipynb`](/home/kristo/detecty-thingy/08-test-prompting-strategy.ipynb), [`ddl.md`](/home/kristo/detecty-thingy/ddl.md), and [`dml-dql.md`](/home/kristo/detecty-thingy/dml-dql.md).
+LLM-backed command line tool for detecting SQL antipatterns in Java projects that use jOOQ.
 
 ## What it does
 
@@ -9,7 +9,7 @@ LLM-backed command line tool for detecting SQL antipatterns in Java projects tha
 - Classifies each candidate as DDL-style or DML/DQL-style analysis.
 - Finds the closest generated `Keys` class and injects it into the prompt when available.
 - Uses an AI SDK model with structured output validation to report antipattern occurrences.
-- Produces either human-readable text or JSON.
+- Produces text, JSON, or CSV output.
 
 The tool intentionally does not implement the notebook's accuracy calculation because the input directory can be any arbitrary project.
 
@@ -30,13 +30,6 @@ sql-antipattern-detector ./my-project --model anthropic:claude-3-7-sonnet-latest
 sql-antipattern-detector ./my-project --model openai:gpt-4.1
 sql-antipattern-detector ./my-project --model openrouter:openai/gpt-4.1
 ```
-
-Custom model values must include an explicit provider prefix. For example:
-
-- `google:gemini-2.5-pro`
-- `anthropic:claude-3-7-sonnet-latest`
-- `openai:gpt-4.1`
-- `openrouter:openai/gpt-4.1`
 
 API keys can be provided either as CLI options or environment variables:
 
@@ -75,6 +68,7 @@ Useful options:
 
 ```bash
 bun run src/cli.ts ./path/to/project --format json
+bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
@@ -112,13 +106,9 @@ OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:o
 bun run build:native
 ```
 
-This produces:
+Output: `dist/sql-antipattern-detector`
 
-```text
-dist/sql-antipattern-detector
-```
-
-## Output shape
+## Output formats
 
 JSON output contains:
 
@@ -135,3 +125,12 @@ Each result includes:
 - `promptType`
 - `occurrences`
 - `usage`
+
+CSV output contains one row per antipattern occurrence with these columns:
+
+- `Project`
+- `Antipattern`
+- `File`
+- `Line from`
+- `Line to`
+- `Comment`

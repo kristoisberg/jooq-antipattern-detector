@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { OutputFormat } from "./config.js";
 import type { FileAnalysis, RunSummary } from "./types.js";
 
@@ -9,13 +11,24 @@ export type CliOutput = {
   summary: RunSummary;
 };
 
-const formatters: Record<OutputFormat, (output: CliOutput) => string> = {
-  text: renderTextReport,
-  json: (output) => JSON.stringify(output, null, 2),
+type OutputDefinition = {
+  render: (output: CliOutput) => string;
+};
+
+const outputDefinitions: Record<OutputFormat, OutputDefinition> = {
+  text: {
+    render: renderTextReport,
+  },
+  json: {
+    render: (output) => JSON.stringify(output, null, 2),
+  },
+  csv: {
+    render: renderCsvReport,
+  },
 };
 
 export function renderOutput(output: CliOutput, format: OutputFormat): string {
-  return formatters[format](output);
+  return outputDefinitions[format].render(output);
 }
 
 export function renderTextReport(output: CliOutput): string {
@@ -61,6 +74,35 @@ export function renderTextReport(output: CliOutput): string {
   return lines.join("\n");
 }
 
+function renderCsvReport(output: CliOutput): string {
+  const projectName = path.basename(output.rootDirectory);
+  const rows = [
+    ["Project", "Antipattern", "File", "Line from", "Line to", "Comment"],
+    ...output.results.flatMap((result) =>
+      result.error
+        ? []
+        : result.occurrences.map((occurrence) => [
+            projectName,
+            occurrence.antipatternName,
+            result.relativePath,
+            String(occurrence.linesRangeStart),
+            String(occurrence.linesRangeEnd),
+            occurrence.reasoning,
+          ]),
+    ),
+  ];
+
+  return rows.map((row) => row.map(escapeCsvField).join(",")).join("\n");
+}
+
 function renderResultHeader(result: FileAnalysis): string {
   return `${result.relativePath} [${result.promptType}]`;
+}
+
+function escapeCsvField(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replaceAll('"', '""')}"`;
+  }
+
+  return value;
 }
