@@ -24,6 +24,11 @@ export const analysisResponseSchema = z.object({
 
 export type AntipatternOccurrence = z.infer<typeof antipatternOccurrenceSchema>;
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
+export type AnalysisUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+};
 
 export type FileAnalysis = {
   filePath: string;
@@ -31,11 +36,7 @@ export type FileAnalysis = {
   promptType: "ddl" | "dml-dql";
   occurrences: AntipatternOccurrence[];
   error?: string;
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-  };
+  usage?: AnalysisUsage;
 };
 
 export type RunSummary = {

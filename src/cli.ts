@@ -6,48 +6,49 @@ import path from "node:path";
 import { Command } from "commander";
 
 import { runAnalysis } from "./app.js";
-import type { AppConfig } from "./config.js";
 import { registerCliOptions, resolveConfig } from "./config.js";
-import type { CliOutput } from "./output.js";
 import { renderOutput } from "./output.js";
 
-export type CliDeps = {
-  resolveConfig: (args?: string[], env?: NodeJS.ProcessEnv) => AppConfig;
-  runAnalysis: typeof runAnalysis;
-  renderOutput: typeof renderOutput;
-  mkdir: typeof mkdir;
-  writeFile: typeof writeFile;
-  writeStdout: (message: string) => void;
-};
+export function renderCliOutput(
+  output: Parameters<typeof renderOutput>[0],
+  format: Parameters<typeof renderOutput>[1],
+) {
+  return `${renderOutput(output, format)}\n`;
+}
 
-const defaultCliDeps: CliDeps = {
-  resolveConfig,
-  runAnalysis,
-  renderOutput,
-  mkdir,
-  writeFile,
-  writeStdout: (message) => {
-    process.stdout.write(message);
-  },
-};
+export function resolveOutputTarget(
+  outputPath?: string,
+): { type: "stdout" } | { type: "file"; path: string; dir: string } {
+  if (!outputPath) {
+    return { type: "stdout" };
+  }
 
-export async function executeCli(
-  directory: string,
-  args: string[] = process.argv.slice(2),
-  deps: CliDeps = defaultCliDeps,
-): Promise<void> {
-  const config = deps.resolveConfig(args);
-  const output = await deps.runAnalysis(directory, config);
-  const renderedOutput = `${deps.renderOutput(output, config.format)}\n`;
+  const resolvedPath = path.resolve(outputPath);
 
-  if (config.output) {
-    const outputPath = path.resolve(config.output);
-    await deps.mkdir(path.dirname(outputPath), { recursive: true });
-    await deps.writeFile(outputPath, renderedOutput, "utf8");
+  return {
+    type: "file",
+    path: resolvedPath,
+    dir: path.dirname(resolvedPath),
+  };
+}
+
+function writeStdout(message: string): void {
+  process.stdout.write(message);
+}
+
+export async function executeCli(directory: string, args: string[] = process.argv.slice(2)): Promise<void> {
+  const config = resolveConfig(args);
+  const output = await runAnalysis(directory, config);
+  const renderedOutput = renderCliOutput(output, config.format);
+  const target = resolveOutputTarget(config.output);
+
+  if (target.type === "file") {
+    await mkdir(target.dir, { recursive: true });
+    await writeFile(target.path, renderedOutput, "utf8");
     return;
   }
 
-  deps.writeStdout(renderedOutput);
+  writeStdout(renderedOutput);
 }
 
 export function createProgram(): Command {

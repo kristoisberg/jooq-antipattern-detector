@@ -2,54 +2,38 @@ import { describe, expect, test } from "bun:test";
 import type { LanguageModelV1 } from "ai";
 
 import { createModel, type ModelDeps } from "../model.js";
+import type { ProviderDefinition } from "../providers.js";
 
 function createStubDeps(): { deps: ModelDeps; calls: Array<{ provider: string; modelId: string; apiKey: string }> } {
   const calls: Array<{ provider: string; modelId: string; apiKey: string }> = [];
+
+  function createProvider(
+    provider: ProviderDefinition["id"],
+    apiKeyField: ProviderDefinition["apiKeyField"],
+    envName: string,
+    cliFlag: string,
+  ): ProviderDefinition {
+    return {
+      id: provider,
+      apiKeyField,
+      apiKeyDescription: `${provider} key`,
+      envName,
+      cliFlag,
+      create: (modelId, apiKey) => {
+        calls.push({ provider, modelId, apiKey });
+        return { provider, modelId } as LanguageModelV1;
+      },
+    };
+  }
 
   return {
     calls,
     deps: {
       providers: {
-        google: {
-          id: "google",
-          apiKeyField: "gemini",
-          envName: "GEMINI_API_KEY",
-          cliFlag: "--gemini-api-key",
-          create: (modelId, apiKey) => {
-            calls.push({ provider: "google", modelId, apiKey });
-            return { provider: "google", modelId } as LanguageModelV1;
-          },
-        },
-        anthropic: {
-          id: "anthropic",
-          apiKeyField: "anthropic",
-          envName: "ANTHROPIC_API_KEY",
-          cliFlag: "--anthropic-api-key",
-          create: (modelId, apiKey) => {
-            calls.push({ provider: "anthropic", modelId, apiKey });
-            return { provider: "anthropic", modelId } as LanguageModelV1;
-          },
-        },
-        openai: {
-          id: "openai",
-          apiKeyField: "openai",
-          envName: "OPENAI_API_KEY",
-          cliFlag: "--openai-api-key",
-          create: (modelId, apiKey) => {
-            calls.push({ provider: "openai", modelId, apiKey });
-            return { provider: "openai", modelId } as LanguageModelV1;
-          },
-        },
-        openrouter: {
-          id: "openrouter",
-          apiKeyField: "openrouter",
-          envName: "OPENROUTER_API_KEY",
-          cliFlag: "--openrouter-api-key",
-          create: (modelId, apiKey) => {
-            calls.push({ provider: "openrouter", modelId, apiKey });
-            return { provider: "openrouter", modelId } as LanguageModelV1;
-          },
-        },
+        google: createProvider("google", "gemini", "GEMINI_API_KEY", "--gemini-api-key"),
+        anthropic: createProvider("anthropic", "anthropic", "ANTHROPIC_API_KEY", "--anthropic-api-key"),
+        openai: createProvider("openai", "openai", "OPENAI_API_KEY", "--openai-api-key"),
+        openrouter: createProvider("openrouter", "openrouter", "OPENROUTER_API_KEY", "--openrouter-api-key"),
       },
     },
   };

@@ -1,24 +1,6 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV1 } from "ai";
 
-export type ModelApiKeys = {
-  gemini?: string;
-  anthropic?: string;
-  openai?: string;
-  openrouter?: string;
-};
-
-type ProviderId = "google" | "anthropic" | "openai" | "openrouter";
-
-type ProviderDefinition = {
-  id: ProviderId;
-  apiKeyField: keyof ModelApiKeys;
-  envName: string;
-  cliFlag: string;
-  create: (modelId: string, apiKey: string) => LanguageModelV1;
-};
+import { PROVIDERS_BY_ID, type ModelApiKeys, type ProviderDefinition, type ProviderId } from "./providers.js";
 
 type ResolvedProvider = {
   definition: ProviderDefinition;
@@ -30,49 +12,7 @@ export type ModelDeps = {
 };
 
 const defaultModelDeps: ModelDeps = {
-  providers: {
-    google: {
-      id: "google",
-      apiKeyField: "gemini",
-      envName: "GEMINI_API_KEY",
-      cliFlag: "--gemini-api-key",
-      create: (modelId, apiKey) =>
-        createGoogleGenerativeAI({
-          apiKey,
-        })(modelId),
-    },
-    anthropic: {
-      id: "anthropic",
-      apiKeyField: "anthropic",
-      envName: "ANTHROPIC_API_KEY",
-      cliFlag: "--anthropic-api-key",
-      create: (modelId, apiKey) =>
-        createAnthropic({
-          apiKey,
-        })(modelId),
-    },
-    openai: {
-      id: "openai",
-      apiKeyField: "openai",
-      envName: "OPENAI_API_KEY",
-      cliFlag: "--openai-api-key",
-      create: (modelId, apiKey) =>
-        createOpenAI({
-          apiKey,
-        })(modelId),
-    },
-    openrouter: {
-      id: "openrouter",
-      apiKeyField: "openrouter",
-      envName: "OPENROUTER_API_KEY",
-      cliFlag: "--openrouter-api-key",
-      create: (modelId, apiKey) =>
-        createOpenAI({
-          apiKey,
-          baseURL: "https://openrouter.ai/api/v1",
-        })(modelId),
-    },
-  },
+  providers: PROVIDERS_BY_ID,
 };
 
 export function createModel(

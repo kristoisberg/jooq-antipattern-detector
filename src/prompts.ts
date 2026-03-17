@@ -3,7 +3,7 @@ export type PromptSet = {
   dmlDql: string;
 };
 
-const PROMPTS: PromptSet = {
+export const PROMPTS: PromptSet = {
   ddl: `You are a senior software developer with expertise in Java, jOOQ and SQL. Analyze the provided Java class and check for the following database design antipatterns, as defined by Bill Karwin:
 
 - ID Required: Never identify this issue in classes representing views, as views cannot contain primary keys. If the class represents a table, always detect the antipattern, if the name of the primary key is just "id" (case-insensitive). Also detect the issue if a synthetic primary key column exists, even though another unique constraint exists, which is suitable as a primary key (the constraint is on columns, which are virtually immutable by nature), and which does not complicate foreign keys referencing the table too much. Only include the lines of the primary key column definition in the line range, do not include comments or anything else.
@@ -36,6 +36,6 @@ FILE_CONTENTS
 `,
 };
 
-export async function loadPrompts(): Promise<PromptSet> {
+export function getPrompts(): PromptSet {
   return PROMPTS;
 }

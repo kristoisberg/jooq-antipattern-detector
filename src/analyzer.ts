@@ -7,7 +7,7 @@ import type { FileCandidate } from "./file-discovery.js";
 import { createModel } from "./model.js";
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
-import { analysisResponseSchema, type FileAnalysis, type RunSummary } from "./types.js";
+import { analysisResponseSchema, type AnalysisUsage, type FileAnalysis, type RunSummary } from "./types.js";
 
 export type AnalyzeOptions = Pick<AppConfig, "model" | "concurrency" | "retries" | "debug" | "apiKeys">;
 
@@ -15,10 +15,9 @@ type AnalysisObjectResult = Promise<{
   object: {
     occurrences: FileAnalysis["occurrences"];
   };
-  usage?: {
+  usage?: AnalysisUsage & {
     promptTokens?: number;
     completionTokens?: number;
-    totalTokens?: number;
   };
 }>;
 

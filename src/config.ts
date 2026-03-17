@@ -1,6 +1,8 @@
 import convict from "convict";
 import type { Command } from "commander";
 
+import { PROVIDER_DEFINITIONS, type ModelApiKeys } from "./providers.js";
+
 export type OutputFormat = "text" | "json" | "csv";
 
 export type AppConfig = {
@@ -10,160 +12,137 @@ export type AppConfig = {
   format: OutputFormat;
   output?: string;
   debug: boolean;
-  apiKeys: {
-    gemini?: string;
-    anthropic?: string;
-    openai?: string;
-    openrouter?: string;
-  };
+  apiKeys: ModelApiKeys;
 };
 
-type ConfigProperties = {
-  model: string;
-  concurrency: number;
-  retries: number;
-  format: OutputFormat;
+type NullableModelApiKeys = {
+  [Key in keyof ModelApiKeys]-?: string | null;
+};
+
+type ConfigProperties = Omit<AppConfig, "output" | "apiKeys"> & {
   output: string | null;
-  debug: boolean;
-  apiKeys: {
-    gemini: string | null;
-    anthropic: string | null;
-    openai: string | null;
-    openrouter: string | null;
-  };
+  apiKeys: NullableModelApiKeys;
 };
 
-type CliOptionDefinition = {
+type ConvictPropertyDefinition<Value> = {
+  doc: string;
+  format: Value[] | StringConstructor | BooleanConstructor | ((value: unknown) => void);
+  default: Value;
+  env?: string;
+  arg: string;
+  nullable?: boolean;
+  sensitive?: boolean;
+};
+
+type OptionDefinition<Value> = {
   flags: string;
   description: string;
+  schema: ConvictPropertyDefinition<Value>;
 };
 
-const configSchema: convict.Schema<ConfigProperties> = {
+const OPTION_DEFINITIONS = {
   model: {
-    doc: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
-    format: nonEmptyString,
-    default: "google:gemini-2.5-pro",
-    env: "SQL_ANTIPATTERN_DETECTOR_MODEL",
-    arg: "model",
-  },
-  concurrency: {
-    doc: "Number of files to analyze concurrently",
-    format: positiveInteger,
-    default: 8,
-    env: "SQL_ANTIPATTERN_DETECTOR_CONCURRENCY",
-    arg: "concurrency",
-  },
-  retries: {
-    doc: "Retries per file on transient model failures",
-    format: positiveInteger,
-    default: 2,
-    env: "SQL_ANTIPATTERN_DETECTOR_RETRIES",
-    arg: "retries",
-  },
-  format: {
-    doc: "Output format",
-    format: ["text", "json", "csv"],
-    default: "text",
-    env: "SQL_ANTIPATTERN_DETECTOR_FORMAT",
-    arg: "format",
-  },
-  output: {
-    doc: "Write output to a file instead of stdout",
-    format: String,
-    default: null,
-    nullable: true,
-    env: "SQL_ANTIPATTERN_DETECTOR_OUTPUT",
-    arg: "output",
-  },
-  debug: {
-    doc: "Print per-file progress and retries to stderr",
-    format: Boolean,
-    default: false,
-    env: "SQL_ANTIPATTERN_DETECTOR_DEBUG",
-    arg: "debug",
-  },
-  apiKeys: {
-    gemini: {
-      doc: "Google Gemini API key",
-      format: String,
-      default: null,
-      nullable: true,
-      env: "GEMINI_API_KEY",
-      arg: "gemini-api-key",
-      sensitive: true,
-    },
-    anthropic: {
-      doc: "Anthropic API key",
-      format: String,
-      default: null,
-      nullable: true,
-      env: "ANTHROPIC_API_KEY",
-      arg: "anthropic-api-key",
-      sensitive: true,
-    },
-    openai: {
-      doc: "OpenAI API key",
-      format: String,
-      default: null,
-      nullable: true,
-      env: "OPENAI_API_KEY",
-      arg: "openai-api-key",
-      sensitive: true,
-    },
-    openrouter: {
-      doc: "OpenRouter API key",
-      format: String,
-      default: null,
-      nullable: true,
-      env: "OPENROUTER_API_KEY",
-      arg: "openrouter-api-key",
-      sensitive: true,
-    },
-  },
-};
-
-const CLI_OPTION_DEFINITIONS: CliOptionDefinition[] = [
-  {
     flags: "--model <model>",
     description:
       'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
+    schema: {
+      doc: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
+      format: nonEmptyString,
+      default: "google:gemini-2.5-pro",
+      env: "SQL_ANTIPATTERN_DETECTOR_MODEL",
+      arg: "model",
+    },
   },
-  {
+  concurrency: {
     flags: "--concurrency <number>",
     description: "Number of files to analyze concurrently",
+    schema: {
+      doc: "Number of files to analyze concurrently",
+      format: positiveInteger,
+      default: 8,
+      env: "SQL_ANTIPATTERN_DETECTOR_CONCURRENCY",
+      arg: "concurrency",
+    },
   },
-  {
+  retries: {
     flags: "--retries <number>",
     description: "Retries per file on transient model failures",
+    schema: {
+      doc: "Retries per file on transient model failures",
+      format: positiveInteger,
+      default: 2,
+      env: "SQL_ANTIPATTERN_DETECTOR_RETRIES",
+      arg: "retries",
+    },
   },
-  {
+  format: {
     flags: "--format <format>",
     description: "Output format: text, json, or csv",
+    schema: {
+      doc: "Output format",
+      format: ["text", "json", "csv"] as OutputFormat[],
+      default: "text" as OutputFormat,
+      env: "SQL_ANTIPATTERN_DETECTOR_FORMAT",
+      arg: "format",
+    },
   },
-  {
+  output: {
     flags: "--output <file>",
     description: "Write output to a file instead of stdout",
+    schema: {
+      doc: "Write output to a file instead of stdout",
+      format: String,
+      default: null as string | null,
+      nullable: true,
+      env: "SQL_ANTIPATTERN_DETECTOR_OUTPUT",
+      arg: "output",
+    },
   },
-  {
+  debug: {
     flags: "--debug",
     description: "Print per-file progress and retries to stderr",
+    schema: {
+      doc: "Print per-file progress and retries to stderr",
+      format: Boolean,
+      default: false,
+      env: "SQL_ANTIPATTERN_DETECTOR_DEBUG",
+      arg: "debug",
+    },
   },
-  {
-    flags: "--gemini-api-key <key>",
-    description: "Google Gemini API key",
-  },
-  {
-    flags: "--anthropic-api-key <key>",
-    description: "Anthropic API key",
-  },
-  {
-    flags: "--openai-api-key <key>",
-    description: "OpenAI API key",
-  },
-  {
-    flags: "--openrouter-api-key <key>",
-    description: "OpenRouter API key",
-  },
+} as const satisfies Record<string, OptionDefinition<unknown>>;
+
+const apiKeyOptionDefinitions = PROVIDER_DEFINITIONS.map((provider) => ({
+  flags: `${provider.cliFlag} <key>`,
+  description: provider.apiKeyDescription,
+  schema: {
+    doc: provider.apiKeyDescription,
+    format: String,
+    default: null as string | null,
+    nullable: true,
+    env: provider.envName,
+    arg: provider.cliFlag.slice(2),
+    sensitive: true,
+  } satisfies ConvictPropertyDefinition<string | null>,
+  apiKeyField: provider.apiKeyField,
+}));
+
+const apiKeyConfigSchema = Object.fromEntries(
+  apiKeyOptionDefinitions.map((option) => [option.apiKeyField, option.schema]),
+) as unknown as convict.Schema<NullableModelApiKeys>;
+
+const configSchema: convict.Schema<ConfigProperties> = {
+  model: OPTION_DEFINITIONS.model.schema,
+  concurrency: OPTION_DEFINITIONS.concurrency.schema,
+  retries: OPTION_DEFINITIONS.retries.schema,
+  format: OPTION_DEFINITIONS.format.schema,
+  output: OPTION_DEFINITIONS.output.schema,
+  debug: OPTION_DEFINITIONS.debug.schema,
+  apiKeys: apiKeyConfigSchema,
+};
+
+const CLI_OPTION_DEFINITIONS = [
+  ...Object.values(OPTION_DEFINITIONS).map(({ flags, description }) => ({ flags, description })),
+  ...apiKeyOptionDefinitions.map(({ flags, description }) => ({ flags, description })),
 ];
 
 export function registerCliOptions(program: Command): Command {
@@ -192,12 +171,9 @@ function normalizeConfig(properties: ConfigProperties): AppConfig {
     format: properties.format,
     output: properties.output ?? undefined,
     debug: properties.debug,
-    apiKeys: {
-      gemini: properties.apiKeys.gemini ?? undefined,
-      anthropic: properties.apiKeys.anthropic ?? undefined,
-      openai: properties.apiKeys.openai ?? undefined,
-      openrouter: properties.apiKeys.openrouter ?? undefined,
-    },
+    apiKeys: Object.fromEntries(
+      Object.entries(properties.apiKeys).map(([key, value]) => [key, value ?? undefined]),
+    ) as ModelApiKeys,
   };
 }
 
