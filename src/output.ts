@@ -1,3 +1,4 @@
+import type { OutputFormat } from "./config.js";
 import type { FileAnalysis, RunSummary } from "./types.js";
 
 export type CliOutput = {
@@ -7,6 +8,15 @@ export type CliOutput = {
   results: FileAnalysis[];
   summary: RunSummary;
 };
+
+const formatters: Record<OutputFormat, (output: CliOutput) => string> = {
+  text: renderTextReport,
+  json: (output) => JSON.stringify(output, null, 2),
+};
+
+export function renderOutput(output: CliOutput, format: OutputFormat): string {
+  return formatters[format](output);
+}
 
 export function renderTextReport(output: CliOutput): string {
   const lines: string[] = [];
@@ -31,7 +41,7 @@ export function renderTextReport(output: CliOutput): string {
 
   for (const result of output.results) {
     lines.push("");
-    lines.push(`${result.relativePath} [${result.promptType}]`);
+    lines.push(renderResultHeader(result));
     if (result.error) {
       lines.push(`  Analysis failed: ${result.error}`);
       continue;
@@ -51,4 +61,8 @@ export function renderTextReport(output: CliOutput): string {
   }
 
   return lines.join("\n");
+}
+
+function renderResultHeader(result: FileAnalysis): string {
+  return `${result.relativePath} [${result.promptType}]`;
 }

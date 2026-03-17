@@ -1,23 +1,13 @@
-type RawCliOptions = {
-  directory?: string;
-  model?: string;
-  concurrency?: number;
-  retries?: number;
-  format?: string;
-  output?: string;
-  debug?: boolean;
-  geminiApiKey?: string;
-  anthropicApiKey?: string;
-  openaiApiKey?: string;
-  openrouterApiKey?: string;
-};
+import convict from "convict";
+import type { Command } from "commander";
 
-export type ResolvedConfig = {
-  directory: string;
+export type OutputFormat = "text" | "json";
+
+export type AppConfig = {
   model: string;
   concurrency: number;
   retries: number;
-  format: "text" | "json";
+  format: OutputFormat;
   output?: string;
   debug: boolean;
   apiKeys: {
@@ -28,125 +18,199 @@ export type ResolvedConfig = {
   };
 };
 
-const DEFAULTS = {
-  model: "google:gemini-2.5-pro",
-  concurrency: 8,
-  retries: 2,
-  format: "text" as const,
-  debug: false,
+type ConfigProperties = {
+  model: string;
+  concurrency: number;
+  retries: number;
+  format: OutputFormat;
+  output: string | null;
+  debug: boolean;
+  apiKeys: {
+    gemini: string | null;
+    anthropic: string | null;
+    openai: string | null;
+    openrouter: string | null;
+  };
 };
 
-const ENV_NAMES = {
-  directory: "SQL_ANTIPATTERN_DETECTOR_DIRECTORY",
-  model: "SQL_ANTIPATTERN_DETECTOR_MODEL",
-  concurrency: "SQL_ANTIPATTERN_DETECTOR_CONCURRENCY",
-  retries: "SQL_ANTIPATTERN_DETECTOR_RETRIES",
-  format: "SQL_ANTIPATTERN_DETECTOR_FORMAT",
-  output: "SQL_ANTIPATTERN_DETECTOR_OUTPUT",
-  debug: "SQL_ANTIPATTERN_DETECTOR_DEBUG",
-  geminiApiKey: "GEMINI_API_KEY",
-  anthropicApiKey: "ANTHROPIC_API_KEY",
-  openaiApiKey: "OPENAI_API_KEY",
-  openrouterApiKey: "OPENROUTER_API_KEY",
-} as const;
+type CliOptionDefinition = {
+  flags: string;
+  description: string;
+};
 
-export function resolveConfig(options: RawCliOptions): ResolvedConfig {
+const configSchema: convict.Schema<ConfigProperties> = {
+  model: {
+    doc: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
+    format: nonEmptyString,
+    default: "google:gemini-2.5-pro",
+    env: "SQL_ANTIPATTERN_DETECTOR_MODEL",
+    arg: "model",
+  },
+  concurrency: {
+    doc: "Number of files to analyze concurrently",
+    format: positiveInteger,
+    default: 8,
+    env: "SQL_ANTIPATTERN_DETECTOR_CONCURRENCY",
+    arg: "concurrency",
+  },
+  retries: {
+    doc: "Retries per file on transient model failures",
+    format: positiveInteger,
+    default: 2,
+    env: "SQL_ANTIPATTERN_DETECTOR_RETRIES",
+    arg: "retries",
+  },
+  format: {
+    doc: "Output format",
+    format: ["text", "json"],
+    default: "text",
+    env: "SQL_ANTIPATTERN_DETECTOR_FORMAT",
+    arg: "format",
+  },
+  output: {
+    doc: "Write output to a file instead of stdout",
+    format: String,
+    default: null,
+    nullable: true,
+    env: "SQL_ANTIPATTERN_DETECTOR_OUTPUT",
+    arg: "output",
+  },
+  debug: {
+    doc: "Print per-file progress and retries to stderr",
+    format: Boolean,
+    default: false,
+    env: "SQL_ANTIPATTERN_DETECTOR_DEBUG",
+    arg: "debug",
+  },
+  apiKeys: {
+    gemini: {
+      doc: "Google Gemini API key",
+      format: String,
+      default: null,
+      nullable: true,
+      env: "GEMINI_API_KEY",
+      arg: "gemini-api-key",
+      sensitive: true,
+    },
+    anthropic: {
+      doc: "Anthropic API key",
+      format: String,
+      default: null,
+      nullable: true,
+      env: "ANTHROPIC_API_KEY",
+      arg: "anthropic-api-key",
+      sensitive: true,
+    },
+    openai: {
+      doc: "OpenAI API key",
+      format: String,
+      default: null,
+      nullable: true,
+      env: "OPENAI_API_KEY",
+      arg: "openai-api-key",
+      sensitive: true,
+    },
+    openrouter: {
+      doc: "OpenRouter API key",
+      format: String,
+      default: null,
+      nullable: true,
+      env: "OPENROUTER_API_KEY",
+      arg: "openrouter-api-key",
+      sensitive: true,
+    },
+  },
+};
+
+const CLI_OPTION_DEFINITIONS: CliOptionDefinition[] = [
+  {
+    flags: "--model <model>",
+    description: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
+  },
+  {
+    flags: "--concurrency <number>",
+    description: "Number of files to analyze concurrently",
+  },
+  {
+    flags: "--retries <number>",
+    description: "Retries per file on transient model failures",
+  },
+  {
+    flags: "--format <format>",
+    description: "Output format: text or json",
+  },
+  {
+    flags: "--output <file>",
+    description: "Write output to a file instead of stdout",
+  },
+  {
+    flags: "--debug",
+    description: "Print per-file progress and retries to stderr",
+  },
+  {
+    flags: "--gemini-api-key <key>",
+    description: "Google Gemini API key",
+  },
+  {
+    flags: "--anthropic-api-key <key>",
+    description: "Anthropic API key",
+  },
+  {
+    flags: "--openai-api-key <key>",
+    description: "OpenAI API key",
+  },
+  {
+    flags: "--openrouter-api-key <key>",
+    description: "OpenRouter API key",
+  },
+];
+
+export function registerCliOptions(program: Command): Command {
+  for (const option of CLI_OPTION_DEFINITIONS) {
+    program.option(option.flags, option.description);
+  }
+
+  return program;
+}
+
+export function resolveConfig(
+  args: string[] = process.argv.slice(2),
+  env: NodeJS.ProcessEnv = process.env,
+): AppConfig {
+  const config = convict<ConfigProperties>(configSchema, {
+    args,
+    env,
+  });
+  config.validate({ allowed: "strict" });
+
+  return normalizeConfig(config.getProperties());
+}
+
+function normalizeConfig(properties: ConfigProperties): AppConfig {
   return {
-    directory: resolveRequiredString(options.directory, ENV_NAMES.directory, "directory"),
-    model: resolveString(options.model, ENV_NAMES.model, DEFAULTS.model),
-    concurrency: resolvePositiveInteger(options.concurrency, ENV_NAMES.concurrency, DEFAULTS.concurrency),
-    retries: resolvePositiveInteger(options.retries, ENV_NAMES.retries, DEFAULTS.retries),
-    format: normalizeFormat(resolveString(options.format, ENV_NAMES.format, DEFAULTS.format)),
-    output: resolveOptionalString(options.output, ENV_NAMES.output),
-    debug: resolveBoolean(options.debug, ENV_NAMES.debug, DEFAULTS.debug),
+    model: properties.model,
+    concurrency: properties.concurrency,
+    retries: properties.retries,
+    format: properties.format,
+    output: properties.output ?? undefined,
+    debug: properties.debug,
     apiKeys: {
-      gemini: resolveOptionalString(options.geminiApiKey, ENV_NAMES.geminiApiKey),
-      anthropic: resolveOptionalString(options.anthropicApiKey, ENV_NAMES.anthropicApiKey),
-      openai: resolveOptionalString(options.openaiApiKey, ENV_NAMES.openaiApiKey),
-      openrouter: resolveOptionalString(options.openrouterApiKey, ENV_NAMES.openrouterApiKey),
+      gemini: properties.apiKeys.gemini ?? undefined,
+      anthropic: properties.apiKeys.anthropic ?? undefined,
+      openai: properties.apiKeys.openai ?? undefined,
+      openrouter: properties.apiKeys.openrouter ?? undefined,
     },
   };
 }
 
-export function parseInteger(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1) {
-    throw new Error(`Expected a positive integer, received "${value}".`);
+function nonEmptyString(value: unknown): void {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error("must be a non-empty string");
   }
-  return parsed;
 }
 
-function resolveRequiredString(
-  cliValue: string | undefined,
-  envName: string,
-  label: string,
-): string {
-  const resolved = resolveOptionalString(cliValue, envName);
-  if (resolved) {
-    return resolved;
+function positiveInteger(value: unknown): void {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new Error("must be a positive integer");
   }
-
-  throw new Error(
-    `Missing required ${label}. Provide it as a CLI argument or set ${envName}.`,
-  );
-}
-
-function resolveString(cliValue: string | undefined, envName: string, defaultValue: string): string {
-  return resolveOptionalString(cliValue, envName) ?? defaultValue;
-}
-
-function resolveOptionalString(cliValue: string | undefined, envName: string): string | undefined {
-  const cliCandidate = normalizeString(cliValue);
-  if (cliCandidate) {
-    return cliCandidate;
-  }
-
-  return normalizeString(process.env[envName]);
-}
-
-function resolvePositiveInteger(
-  cliValue: number | undefined,
-  envName: string,
-  defaultValue: number,
-): number {
-  if (cliValue !== undefined) {
-    return cliValue;
-  }
-
-  const envValue = normalizeString(process.env[envName]);
-  return envValue ? parseInteger(envValue) : defaultValue;
-}
-
-function resolveBoolean(cliValue: boolean | undefined, envName: string, defaultValue: boolean): boolean {
-  if (cliValue !== undefined) {
-    return cliValue;
-  }
-
-  const envValue = normalizeString(process.env[envName]);
-  return envValue ? parseBoolean(envValue, envName) : defaultValue;
-}
-
-function parseBoolean(value: string, envName: string): boolean {
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-
-  throw new Error(`Expected ${envName} to be a boolean, received "${value}".`);
-}
-
-function normalizeString(value: string | undefined): string | undefined {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function normalizeFormat(value: string): "text" | "json" {
-  if (value === "text" || value === "json") {
-    return value;
-  }
-
-  throw new Error(`Unsupported format "${value}". Use "text" or "json".`);
 }

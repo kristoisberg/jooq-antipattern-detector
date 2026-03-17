@@ -10,68 +10,106 @@ export type ModelApiKeys = {
   openrouter?: string;
 };
 
-export function createModel(modelId: string, apiKeys: ModelApiKeys): LanguageModelV1 {
-  const normalizedModelId = modelId.trim();
-  const [explicitProvider, ...rest] = normalizedModelId.split(":");
+type ProviderId = "google" | "anthropic" | "openai" | "openrouter";
 
-  if (rest.length > 0) {
-    return instantiateProvider(explicitProvider, rest.join(":"), apiKeys);
-  }
+type ProviderDefinition = {
+  id: ProviderId;
+  apiKeyField: keyof ModelApiKeys;
+  envName: string;
+  cliFlag: string;
+  create: (modelId: string, apiKey: string) => LanguageModelV1;
+};
 
-  if (looksLikeGoogleModel(normalizedModelId)) {
-    return instantiateProvider("google", normalizedModelId, apiKeys);
-  }
+type ResolvedProvider = {
+  definition: ProviderDefinition;
+  modelId: string;
+};
 
-  if (looksLikeAnthropicModel(normalizedModelId)) {
-    return instantiateProvider("anthropic", normalizedModelId, apiKeys);
-  }
-
-  return instantiateProvider("openai", normalizedModelId, apiKeys);
-}
-
-function instantiateProvider(provider: string, modelId: string, apiKeys: ModelApiKeys): LanguageModelV1 {
-  switch (provider) {
-    case "google":
-    case "gemini":
-      requireApiKey(apiKeys.gemini, "GEMINI_API_KEY", "--gemini-api-key");
-      return createGoogleGenerativeAI({
-        apiKey: apiKeys.gemini,
-      })(modelId);
-    case "anthropic":
-    case "claude":
-      requireApiKey(apiKeys.anthropic, "ANTHROPIC_API_KEY", "--anthropic-api-key");
-      return createAnthropic({
-        apiKey: apiKeys.anthropic,
-      })(modelId);
-    case "openai":
-    case "gpt":
-      requireApiKey(apiKeys.openai, "OPENAI_API_KEY", "--openai-api-key");
-      return createOpenAI({
-        apiKey: apiKeys.openai,
-      })(modelId);
-    case "openrouter":
-      requireApiKey(apiKeys.openrouter, "OPENROUTER_API_KEY", "--openrouter-api-key");
-      return createOpenAI({
-        apiKey: apiKeys.openrouter,
+const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
+  google: {
+    id: "google",
+    apiKeyField: "gemini",
+    envName: "GEMINI_API_KEY",
+    cliFlag: "--gemini-api-key",
+    create: (modelId, apiKey) =>
+      createGoogleGenerativeAI({
+        apiKey,
+      })(modelId),
+  },
+  anthropic: {
+    id: "anthropic",
+    apiKeyField: "anthropic",
+    envName: "ANTHROPIC_API_KEY",
+    cliFlag: "--anthropic-api-key",
+    create: (modelId, apiKey) =>
+      createAnthropic({
+        apiKey,
+      })(modelId),
+  },
+  openai: {
+    id: "openai",
+    apiKeyField: "openai",
+    envName: "OPENAI_API_KEY",
+    cliFlag: "--openai-api-key",
+    create: (modelId, apiKey) =>
+      createOpenAI({
+        apiKey,
+      })(modelId),
+  },
+  openrouter: {
+    id: "openrouter",
+    apiKeyField: "openrouter",
+    envName: "OPENROUTER_API_KEY",
+    cliFlag: "--openrouter-api-key",
+    create: (modelId, apiKey) =>
+      createOpenAI({
+        apiKey,
         baseURL: "https://openrouter.ai/api/v1",
-      })(modelId);
-    default:
-      throw new Error(
-        `Unsupported provider prefix "${provider}". Use "google:", "anthropic:", "openai:", or "openrouter:".`,
-      );
+      })(modelId),
+  },
+};
+
+export function createModel(modelId: string, apiKeys: ModelApiKeys): LanguageModelV1 {
+  const resolved = resolveProvider(modelId);
+  const apiKey = apiKeys[resolved.definition.apiKeyField];
+
+  if (!apiKey) {
+    throw new Error(
+      `Missing API key for ${resolved.definition.id}. Provide ${resolved.definition.cliFlag} or set ${resolved.definition.envName}.`,
+    );
   }
+
+  return resolved.definition.create(resolved.modelId, apiKey);
 }
 
-function looksLikeGoogleModel(modelId: string): boolean {
-  return modelId.startsWith("gemini");
-}
-
-function looksLikeAnthropicModel(modelId: string): boolean {
-  return modelId.startsWith("claude");
-}
-
-function requireApiKey(value: string | undefined, envName: string, cliFlag: string): void {
-  if (!value) {
-    throw new Error(`Missing API key. Provide ${cliFlag} or set ${envName}.`);
+function resolveProvider(modelId: string): ResolvedProvider {
+  const normalizedModelId = modelId.trim();
+  if (!normalizedModelId) {
+    throw new Error("Model identifier must be a non-empty string.");
   }
+
+  const separatorIndex = normalizedModelId.indexOf(":");
+  if (separatorIndex === -1) {
+    throw new Error(
+      'Model identifier must use an explicit provider prefix, for example "google:gemini-2.5-pro".',
+    );
+  }
+
+  const providerId = normalizedModelId.slice(0, separatorIndex).trim() as ProviderId;
+  const providerModelId = normalizedModelId.slice(separatorIndex + 1).trim();
+
+  if (!(providerId in PROVIDERS)) {
+    throw new Error(
+      `Unsupported provider prefix "${normalizedModelId.slice(0, separatorIndex)}". Use "google:", "anthropic:", "openai:", or "openrouter:".`,
+    );
+  }
+
+  if (!providerModelId) {
+    throw new Error(`Provider prefix "${providerId}" must be followed by a model identifier.`);
+  }
+
+  return {
+    definition: PROVIDERS[providerId],
+    modelId: providerModelId,
+  };
 }

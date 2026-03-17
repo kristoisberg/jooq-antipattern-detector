@@ -1,5 +1,8 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
+
+import fg from "fast-glob";
+import pLimit from "p-limit";
 
 const excludedPathFragments = [
   "module-info.java",
@@ -26,11 +29,7 @@ const excludedPathFragments = [
   "tables/Svals.java",
 ];
 
-const includedPhrases = [
-  "org.jooq",
-  "Tables",
-  "tables",
-];
+const includedPhrases = ["org.jooq", "Tables", "tables"];
 
 const excludedPhrases = [
   "extends TableRecordImpl",
@@ -64,6 +63,13 @@ const ddlIndicatorPhrases = [
 ];
 
 const latin1Decoder = new TextDecoder("latin1");
+const fileReadLimit = pLimit(32);
+
+type LoadedJavaFile = {
+  absolutePath: string;
+  relativePath: string;
+  contents: string;
+};
 
 export type FileCandidate = {
   absolutePath: string;
@@ -79,92 +85,79 @@ export type DiscoveryResult = {
 };
 
 export async function discoverApplicableFiles(rootDir: string): Promise<DiscoveryResult> {
-  const allJavaFiles = await walkJavaFiles(rootDir);
-  const keysFiles = await collectKeysFiles(allJavaFiles);
+  const files = await loadJavaFiles(rootDir);
+  const keysFiles = files.filter((file) => file.contents.includes("public class Keys "));
 
-  const candidates: FileCandidate[] = [];
+  const candidates = files
+    .filter(isApplicableFile)
+    .map((file) => {
+      const closestKeysFile = findClosestKeysFile(file, keysFiles);
+      const promptType: FileCandidate["promptType"] = ddlIndicatorPhrases.some((phrase) =>
+        file.contents.includes(phrase),
+      )
+        ? "ddl"
+        : "dml-dql";
 
-  for (const absolutePath of allJavaFiles) {
-    const relativePath = normalizePath(path.relative(rootDir, absolutePath));
-    if (excludedPathFragments.some((fragment) => relativePath.includes(fragment))) {
-      continue;
-    }
-
-    const contents = await readLatin1File(absolutePath);
-    if (!includedPhrases.some((phrase) => contents.includes(phrase))) {
-      continue;
-    }
-
-    if (excludedPhrases.some((phrase) => contents.includes(phrase))) {
-      continue;
-    }
-
-    const closestKeysPath = findClosestKeysFile(absolutePath, keysFiles);
-    const closestKeysContents = closestKeysPath ? await readLatin1File(closestKeysPath) : "";
-    const promptType = ddlIndicatorPhrases.some((phrase) => contents.includes(phrase))
-      ? "ddl"
-      : "dml-dql";
-
-    candidates.push({
-      absolutePath,
-      relativePath,
-      contents,
-      promptType,
-      closestKeysContents,
+      return {
+        absolutePath: file.absolutePath,
+        relativePath: file.relativePath,
+        contents: file.contents,
+        promptType,
+        closestKeysContents: closestKeysFile?.contents ?? "",
+      };
     });
-  }
 
-  return { allJavaFiles, candidates };
+  return {
+    allJavaFiles: files.map((file) => file.absolutePath),
+    candidates,
+  };
 }
 
-async function walkJavaFiles(rootDir: string): Promise<string[]> {
-  const results: string[] = [];
-  const queue = [rootDir];
+async function loadJavaFiles(rootDir: string): Promise<LoadedJavaFile[]> {
+  const relativePaths = await fg("**/*.java", {
+    cwd: rootDir,
+    onlyFiles: true,
+    dot: false,
+    followSymbolicLinks: false,
+  });
 
-  while (queue.length > 0) {
-    const currentDir = queue.pop();
-    if (!currentDir) {
-      continue;
-    }
+  const sortedRelativePaths = relativePaths.map(normalizePath).sort();
 
-    const entries = await readdir(currentDir, { withFileTypes: true });
-    for (const entry of entries) {
-      const absolutePath = path.join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        queue.push(absolutePath);
-        continue;
-      }
-
-      if (entry.isFile() && entry.name.endsWith(".java")) {
-        results.push(absolutePath);
-      }
-    }
-  }
-
-  return results.sort();
+  return Promise.all(
+    sortedRelativePaths.map((relativePath) =>
+      fileReadLimit(async () => ({
+        absolutePath: path.join(rootDir, relativePath),
+        relativePath,
+        contents: await readLatin1File(path.join(rootDir, relativePath)),
+      })),
+    ),
+  );
 }
 
-async function collectKeysFiles(allJavaFiles: string[]): Promise<string[]> {
-  const matches: string[] = [];
-
-  for (const filePath of allJavaFiles) {
-    const contents = await readLatin1File(filePath);
-    if (contents.includes("public class Keys ")) {
-      matches.push(filePath);
-    }
+function isApplicableFile(file: LoadedJavaFile): boolean {
+  if (excludedPathFragments.some((fragment) => file.relativePath.includes(fragment))) {
+    return false;
   }
 
-  return matches;
+  if (!includedPhrases.some((phrase) => file.contents.includes(phrase))) {
+    return false;
+  }
+
+  if (excludedPhrases.some((phrase) => file.contents.includes(phrase))) {
+    return false;
+  }
+
+  return true;
 }
 
-function findClosestKeysFile(filePath: string, keysFiles: string[]): string | undefined {
-  let closest: string | undefined;
+function findClosestKeysFile(file: LoadedJavaFile, keysFiles: LoadedJavaFile[]): LoadedJavaFile | undefined {
+  let closest: LoadedJavaFile | undefined;
   let closestCommonPrefixLength = -1;
 
-  for (const keysFilePath of keysFiles) {
-    const prefixLength = commonPrefixLength(filePath, keysFilePath);
+  for (const keysFile of keysFiles) {
+    const prefixLength = commonPrefixLength(file.relativePath, keysFile.relativePath);
     if (prefixLength > closestCommonPrefixLength) {
-      closest = keysFilePath;
+      closest = keysFile;
       closestCommonPrefixLength = prefixLength;
     }
   }

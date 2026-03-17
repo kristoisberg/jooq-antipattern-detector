@@ -1,19 +1,14 @@
+import pLimit from "p-limit";
 import { generateObject } from "ai";
 
-import type { ResolvedConfig } from "./config.js";
+import type { AppConfig } from "./config.js";
 import type { FileCandidate } from "./file-discovery.js";
 import { createModel } from "./model.js";
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
 import { analysisResponseSchema, type FileAnalysis, type RunSummary } from "./types.js";
 
-export type AnalyzeOptions = {
-  model: string;
-  concurrency: number;
-  retries: number;
-  debug: boolean;
-  apiKeys: ResolvedConfig["apiKeys"];
-};
+export type AnalyzeOptions = Pick<AppConfig, "model" | "concurrency" | "retries" | "debug" | "apiKeys">;
 
 export async function analyzeFiles(
   candidates: FileCandidate[],
@@ -21,12 +16,20 @@ export async function analyzeFiles(
   options: AnalyzeOptions,
 ): Promise<{ analyses: FileAnalysis[]; summary: RunSummary }> {
   const model = createModel(options.model, options.apiKeys);
-  const analyses: FileAnalysis[] = [];
-  const workers = Array.from({ length: Math.max(1, options.concurrency) }, (_, workerIndex) =>
-    runWorker(workerIndex, model, candidates, prompts, options, analyses),
+  const limit = pLimit(Math.max(1, options.concurrency));
+
+  const analyses = await Promise.all(
+    candidates.map((candidate) =>
+      limit(async () => {
+        const prompt = buildPrompt(candidate, prompts);
+
+        return analyzeWithRetry(model, candidate, prompt, options).catch((error) =>
+          buildFailedAnalysis(candidate, error),
+        );
+      }),
+    ),
   );
 
-  await Promise.all(workers);
   analyses.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 
   const summary = analyses.reduce<RunSummary>(
@@ -61,29 +64,17 @@ export async function analyzeFiles(
   return { analyses, summary };
 }
 
-async function runWorker(
-  workerIndex: number,
-  model: ReturnType<typeof createModel>,
-  candidates: FileCandidate[],
-  prompts: PromptSet,
-  options: AnalyzeOptions,
-  analyses: FileAnalysis[],
-): Promise<void> {
-  for (let index = workerIndex; index < candidates.length; index += Math.max(1, options.concurrency)) {
-    const candidate = candidates[index];
-    const prompt = buildPrompt(candidate, prompts);
-    const analysis = await analyzeSingleFile(model, candidate, prompt, options).catch((error) => ({
-      filePath: candidate.absolutePath,
-      relativePath: candidate.relativePath,
-      promptType: candidate.promptType,
-      occurrences: [],
-      error: formatError(error),
-    }));
-    analyses.push(analysis);
-  }
+function buildFailedAnalysis(candidate: FileCandidate, error: unknown): FileAnalysis {
+  return {
+    filePath: candidate.absolutePath,
+    relativePath: candidate.relativePath,
+    promptType: candidate.promptType,
+    occurrences: [],
+    error: formatError(error),
+  };
 }
 
-async function analyzeSingleFile(
+async function analyzeWithRetry(
   model: ReturnType<typeof createModel>,
   candidate: FileCandidate,
   prompt: string,

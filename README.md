@@ -31,11 +31,12 @@ sql-antipattern-detector ./my-project --model openai:gpt-4.1
 sql-antipattern-detector ./my-project --model openrouter:openai/gpt-4.1
 ```
 
-If no prefix is provided, the CLI infers one from the model name:
+Custom model values must include an explicit provider prefix. For example:
 
-- `gemini*` -> Google
-- `claude*` -> Anthropic
-- everything else -> OpenAI
+- `google:gemini-2.5-pro`
+- `anthropic:claude-3-7-sonnet-latest`
+- `openai:gpt-4.1`
+- `openrouter:openai/gpt-4.1`
 
 API keys can be provided either as CLI options or environment variables:
 
@@ -64,7 +65,7 @@ bun run src/cli.ts ./path/to/project --output reports/findings.json --format jso
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
 
-Every configuration parameter supports the same precedence:
+All option-style configuration parameters support the same precedence:
 
 ```text
 CLI parameter -> environment variable -> default
@@ -72,7 +73,6 @@ CLI parameter -> environment variable -> default
 
 Environment variables:
 
-- `SQL_ANTIPATTERN_DETECTOR_DIRECTORY`
 - `SQL_ANTIPATTERN_DETECTOR_MODEL`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
@@ -87,8 +87,7 @@ Environment variables:
 Examples:
 
 ```bash
-SQL_ANTIPATTERN_DETECTOR_DIRECTORY=./path/to/project bun run src/cli.ts
-SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/findings.json bun run src/cli.ts
+SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/findings.json bun run src/cli.ts ./path/to/project
 GEMINI_API_KEY=... bun run src/cli.ts ./path/to/project --model google:gemini-2.5-pro
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1
 ```
