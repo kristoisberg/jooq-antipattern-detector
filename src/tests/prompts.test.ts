@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { loadPrompts } from "./prompts.js";
+import { loadPrompts } from "../prompts.js";
 
 describe("loadPrompts", () => {
   test("returns both prompt templates", async () => {

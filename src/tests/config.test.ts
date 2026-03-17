@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { Command } from "commander";
 
-import { registerCliOptions, resolveConfig } from "./config.js";
+import { registerCliOptions, resolveConfig } from "../config.js";
 
 describe("resolveConfig", () => {
   test("uses environment values when CLI args are absent", () => {

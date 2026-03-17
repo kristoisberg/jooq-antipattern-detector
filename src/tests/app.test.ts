@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { runAnalysis, type AppDeps } from "./app.js";
-import type { AppConfig } from "./config.js";
-import type { FileCandidate, DiscoveryResult } from "./file-discovery.js";
-import type { PromptSet } from "./prompts.js";
+import { runAnalysis, type AppDeps } from "../app.js";
+import type { AppConfig } from "../config.js";
+import type { FileCandidate, DiscoveryResult } from "../file-discovery.js";
+import type { PromptSet } from "../prompts.js";
 
 describe("runAnalysis", () => {
   test("orchestrates dependencies and returns the final cli payload", async () => {

@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { discoverApplicableFiles } from "./file-discovery.js";
+import { discoverApplicableFiles } from "../file-discovery.js";
 
 const temporaryDirectories: string[] = [];
 

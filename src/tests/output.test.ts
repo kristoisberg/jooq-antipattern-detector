@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { renderOutput, type CliOutput } from "./output.js";
+import { renderOutput, type CliOutput } from "../output.js";
 
 const sampleOutput: CliOutput = {
   rootDirectory: "/tmp/my-project",

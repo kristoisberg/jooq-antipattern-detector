@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { createProgram, executeCli } from "./cli.js";
-import type { AppConfig } from "./config.js";
-import type { CliOutput } from "./output.js";
+import { createProgram, executeCli } from "../cli.js";
+import type { AppConfig } from "../config.js";
+import type { CliOutput } from "../output.js";
 
 const baseConfig: AppConfig = {
   model: "google:gemini-2.5-pro",

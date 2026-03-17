@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import type { LanguageModelV1 } from "ai";
 
-import { analyzeFiles, type AnalyzerDeps, type AnalyzeOptions } from "./analyzer.js";
-import type { FileCandidate } from "./file-discovery.js";
-import type { PromptSet } from "./prompts.js";
+import { analyzeFiles, type AnalyzerDeps, type AnalyzeOptions } from "../analyzer.js";
+import type { FileCandidate } from "../file-discovery.js";
+import type { PromptSet } from "../prompts.js";
 
 const prompts: PromptSet = {
   ddl: "DDL FILE_CONTENTS KEYS_CONTENTS",
@@ -43,8 +44,8 @@ describe("analyzeFiles", () => {
     const promptsSeen: string[] = [];
 
     const deps: AnalyzerDeps = {
-      createModel: () => ({ provider: "fake-model" }) as ReturnType<AnalyzerDeps["createModel"]>,
-      generateObject: async ({ prompt }: { prompt: string; model: unknown; schema: unknown; temperature: number }) => {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async (_model, prompt) => {
         promptsSeen.push(prompt);
         const currentAttempt = (attempts.get(prompt) ?? 0) + 1;
         attempts.set(prompt, currentAttempt);
@@ -113,8 +114,8 @@ describe("analyzeFiles", () => {
 
   test("converts exhausted retries into file analysis errors", async () => {
     const deps: AnalyzerDeps = {
-      createModel: () => ({ provider: "fake-model" }) as ReturnType<AnalyzerDeps["createModel"]>,
-      generateObject: async () => {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async () => {
         throw new Error("always failing");
       },
       writeDebug: () => {},

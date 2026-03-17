@@ -1,5 +1,6 @@
 import pLimit from "p-limit";
 import { generateObject } from "ai";
+import type { LanguageModelV1 } from "ai";
 
 import type { AppConfig } from "./config.js";
 import type { FileCandidate } from "./file-discovery.js";
@@ -10,12 +11,7 @@ import { analysisResponseSchema, type FileAnalysis, type RunSummary } from "./ty
 
 export type AnalyzeOptions = Pick<AppConfig, "model" | "concurrency" | "retries" | "debug" | "apiKeys">;
 
-type GenerateObjectLike = (options: {
-  model: unknown;
-  schema: typeof analysisResponseSchema;
-  temperature: number;
-  prompt: string;
-}) => Promise<{
+type AnalysisObjectResult = Promise<{
   object: {
     occurrences: FileAnalysis["occurrences"];
   };
@@ -28,13 +24,19 @@ type GenerateObjectLike = (options: {
 
 export type AnalyzerDeps = {
   createModel: typeof createModel;
-  generateObject: GenerateObjectLike;
+  generateAnalysisObject: (model: LanguageModelV1, prompt: string) => AnalysisObjectResult;
   writeDebug: (message: string) => void;
 };
 
 const defaultAnalyzerDeps: AnalyzerDeps = {
   createModel,
-  generateObject: ((options: unknown) => generateObject(options as never)) as unknown as GenerateObjectLike,
+  generateAnalysisObject: (model, prompt) =>
+    generateObject({
+      model,
+      schema: analysisResponseSchema,
+      temperature: 0,
+      prompt,
+    }),
   writeDebug: (message) => {
     process.stderr.write(message);
   },
@@ -116,12 +118,7 @@ async function analyzeWithRetry(
 
   for (let attempt = 0; attempt <= options.retries; attempt += 1) {
     try {
-      const result = await deps.generateObject({
-        model,
-        schema: analysisResponseSchema,
-        temperature: 0,
-        prompt,
-      });
+      const result = await deps.generateAnalysisObject(model, prompt);
 
       if (options.debug) {
         deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV1 } from "ai";
 
-import { createModel, type ModelDeps } from "./model.js";
+import { createModel, type ModelDeps } from "../model.js";
 
 function createStubDeps(): { deps: ModelDeps; calls: Array<{ provider: string; modelId: string; apiKey: string }> } {
   const calls: Array<{ provider: string; modelId: string; apiKey: string }> = [];

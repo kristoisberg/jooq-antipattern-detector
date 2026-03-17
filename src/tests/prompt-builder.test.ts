@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildPrompt } from "./prompt-builder.js";
-import type { FileCandidate } from "./file-discovery.js";
-import type { PromptSet } from "./prompts.js";
+import { buildPrompt } from "../prompt-builder.js";
+import type { FileCandidate } from "../file-discovery.js";
+import type { PromptSet } from "../prompts.js";
 
 const prompts: PromptSet = {
   ddl: "DDL\nFILE_CONTENTS\nKEYS_CONTENTS",
