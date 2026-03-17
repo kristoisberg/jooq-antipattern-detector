@@ -70,6 +70,7 @@ Useful options:
 bun run src/cli.ts ./path/to/project --format json
 bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
+bun run src/cli.ts ./path/to/project --model openai:o3-mini --thinking-effort high
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
 
@@ -84,6 +85,7 @@ Environment variables:
 - `SQL_ANTIPATTERN_DETECTOR_MODEL`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
+- `SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT`
 - `SQL_ANTIPATTERN_DETECTOR_FORMAT`
 - `SQL_ANTIPATTERN_DETECTOR_OUTPUT`
 - `SQL_ANTIPATTERN_DETECTOR_DEBUG`
@@ -99,6 +101,8 @@ SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/fin
 GEMINI_API_KEY=... bun run src/cli.ts ./path/to/project --model google:gemini-2.5-pro
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1
 ```
+
+`thinking-effort` accepts `low`, `medium`, or `high`. It is forwarded for `openai:` and `openrouter:` models.
 
 ## Build a native binary
 

@@ -51,42 +51,83 @@ const sampleOutput: CliOutput = {
 
 describe("renderOutput", () => {
   test("renders text output for empty results", () => {
-    const rendered = renderOutput(
-      {
-        ...sampleOutput,
-        results: [],
-      },
-      "text",
+    const rendered = stripAnsi(
+      renderOutput(
+        {
+          ...sampleOutput,
+          results: [],
+        },
+        "text",
+      ),
     );
 
-    expect(rendered).toContain("Model: google:gemini-2.5-pro");
+    expect(rendered).toContain("SQL Antipattern Detector");
+    expect(rendered).toContain("google:gemini-2.5-pro");
     expect(rendered).toContain("No applicable Java files were found.");
   });
 
-  test("renders text output for findings, failures, and no-findings files", () => {
-    const rendered = renderOutput(
-      {
-        ...sampleOutput,
-        results: [
-          sampleOutput.results[0]!,
-          {
-            filePath: "/tmp/my-project/src/Gamma.java",
-            relativePath: "src/Gamma.java",
-            promptType: "dml-dql",
-            occurrences: [],
-          },
-          sampleOutput.results[1]!,
-        ],
-      },
-      "text",
+  test("renders text output for findings and failures, while skipping successful no-findings files", () => {
+    const rendered = stripAnsi(
+      renderOutput(
+        {
+          ...sampleOutput,
+          results: [
+            sampleOutput.results[0]!,
+            {
+              filePath: "/tmp/my-project/src/Gamma.java",
+              relativePath: "src/Gamma.java",
+              promptType: "dml-dql",
+              occurrences: [],
+            },
+            sampleOutput.results[1]!,
+          ],
+        },
+        "text",
+      ),
     );
 
-    expect(rendered).toContain("src/Alpha.java [ddl]");
+    expect(rendered).toContain("Summary");
+    expect(rendered).toContain("Findings");
+    expect(rendered).toContain("Failures");
+    expect(rendered).toContain("  ----------------------------------------\nsrc/Alpha.java");
+    expect(rendered).toContain("src/Alpha.java");
     expect(rendered).toContain("ID Required (10-12)");
-    expect(rendered).toContain("src/Gamma.java [dml-dql]");
-    expect(rendered).toContain("No antipatterns found.");
-    expect(rendered).toContain("src/Beta.java [dml-dql]");
+    expect(rendered).toContain("Code      id BIGINT");
+    expect(rendered).toContain('Comment   Primary key uses "id", which is too generic.');
+    expect(rendered).toContain('Comment   Primary key uses "id", which is too generic.\n\n  31 Flavors (20-20)');
+    expect(rendered).not.toContain("src/Gamma.java");
+    expect(rendered).not.toContain("[ddl]");
+    expect(rendered).not.toContain("[dml-dql]");
+    expect(rendered).toContain("  ----------------------------------------\nsrc/Beta.java");
+    expect(rendered).toContain("src/Beta.java");
     expect(rendered).toContain("Analysis failed: Model timeout");
+  });
+
+  test("renders a compact success message when analyses complete without findings", () => {
+    const rendered = stripAnsi(
+      renderOutput(
+        {
+          ...sampleOutput,
+          results: [
+            {
+              filePath: "/tmp/my-project/src/Gamma.java",
+              relativePath: "src/Gamma.java",
+              promptType: "dml-dql",
+              occurrences: [],
+            },
+          ],
+          summary: {
+            ...sampleOutput.summary,
+            filesWithFindings: 0,
+            totalOccurrences: 0,
+          },
+        },
+        "text",
+      ),
+    );
+
+    expect(rendered).toContain("No antipatterns detected.");
+    expect(rendered).not.toContain("src/Gamma.java");
   });
 
   test("renders csv as one row per occurrence", () => {
@@ -118,3 +159,7 @@ describe("renderOutput", () => {
     expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Comment");
   });
 });
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001B\[[0-9;]*m/g, "");
+}

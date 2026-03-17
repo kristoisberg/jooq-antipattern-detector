@@ -10,6 +10,7 @@ describe("buildAnalyzeOptions", () => {
       model: "google:gemini-2.5-pro",
       concurrency: 3,
       retries: 4,
+      thinkingEffort: "high",
       format: "json",
       debug: true,
       apiKeys: {
@@ -21,6 +22,7 @@ describe("buildAnalyzeOptions", () => {
       model: "google:gemini-2.5-pro",
       concurrency: 3,
       retries: 4,
+      thinkingEffort: "high",
       debug: true,
       apiKeys: {
         gemini: "test-key",

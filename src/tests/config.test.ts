@@ -10,6 +10,7 @@ describe("resolveConfig", () => {
       SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
       SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
       SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
+      SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
       SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
       SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
       SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
@@ -19,6 +20,7 @@ describe("resolveConfig", () => {
     expect(config.model).toBe("openrouter:openai/gpt-4.1");
     expect(config.concurrency).toBe(4);
     expect(config.retries).toBe(3);
+    expect(config.thinkingEffort).toBe("high");
     expect(config.format).toBe("csv");
     expect(config.output).toBe("reports/findings.json");
     expect(config.debug).toBe(true);
@@ -26,13 +28,18 @@ describe("resolveConfig", () => {
   });
 
   test("applies CLI args over environment values", () => {
-    const config = resolveConfig(["--concurrency", "7", "--debug", "false", "--openai-api-key", "cli-key"], {
-      SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
-      SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
-      OPENAI_API_KEY: "env-key",
-    });
+    const config = resolveConfig(
+      ["--concurrency", "7", "--thinking-effort", "low", "--debug", "false", "--openai-api-key", "cli-key"],
+      {
+        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
+        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
+        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+        OPENAI_API_KEY: "env-key",
+      },
+    );
 
     expect(config.concurrency).toBe(7);
+    expect(config.thinkingEffort).toBe("low");
     expect(config.debug).toBe(false);
     expect(config.apiKeys.openai).toBe("cli-key");
   });
@@ -43,6 +50,7 @@ describe("resolveConfig", () => {
     expect(config.model).toBe("google:gemini-2.5-pro");
     expect(config.concurrency).toBe(8);
     expect(config.retries).toBe(2);
+    expect(config.thinkingEffort).toBe("medium");
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
   });
@@ -55,6 +63,7 @@ describe("resolveConfig", () => {
       "--model",
       "--concurrency",
       "--retries",
+      "--thinking-effort",
       "--format",
       "--output",
       "--debug",

@@ -4,11 +4,13 @@ import type { Command } from "commander";
 import { PROVIDER_DEFINITIONS, type ModelApiKeys } from "./providers.js";
 
 export type OutputFormat = "text" | "json" | "csv";
+export type ThinkingEffort = "low" | "medium" | "high";
 
 export type AppConfig = {
   model: string;
   concurrency: number;
   retries: number;
+  thinkingEffort: ThinkingEffort;
   format: OutputFormat;
   output?: string;
   debug: boolean;
@@ -75,6 +77,17 @@ const OPTION_DEFINITIONS = {
       arg: "retries",
     },
   },
+  thinkingEffort: {
+    flags: "--thinking-effort <effort>",
+    description: "Reasoning effort for supported reasoning models: low, medium, or high",
+    schema: {
+      doc: "Reasoning effort for supported reasoning models",
+      format: ["low", "medium", "high"] as ThinkingEffort[],
+      default: "medium" as ThinkingEffort,
+      env: "SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT",
+      arg: "thinking-effort",
+    },
+  },
   format: {
     flags: "--format <format>",
     description: "Output format: text, json, or csv",
@@ -134,6 +147,7 @@ const configSchema: convict.Schema<ConfigProperties> = {
   model: OPTION_DEFINITIONS.model.schema,
   concurrency: OPTION_DEFINITIONS.concurrency.schema,
   retries: OPTION_DEFINITIONS.retries.schema,
+  thinkingEffort: OPTION_DEFINITIONS.thinkingEffort.schema,
   format: OPTION_DEFINITIONS.format.schema,
   output: OPTION_DEFINITIONS.output.schema,
   debug: OPTION_DEFINITIONS.debug.schema,
@@ -168,6 +182,7 @@ function normalizeConfig(properties: ConfigProperties): AppConfig {
     model: properties.model,
     concurrency: properties.concurrency,
     retries: properties.retries,
+    thinkingEffort: properties.thinkingEffort,
     format: properties.format,
     output: properties.output ?? undefined,
     debug: properties.debug,

@@ -31,6 +31,7 @@ const options: AnalyzeOptions = {
   model: "google:gemini-2.5-pro",
   concurrency: 2,
   retries: 2,
+  thinkingEffort: "medium",
   debug: true,
   apiKeys: {
     gemini: "test-key",
@@ -45,8 +46,10 @@ describe("analyzeFiles", () => {
 
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, prompt) => {
+      generateAnalysisObject: async (_model, prompt, providerId, thinkingEffort) => {
         promptsSeen.push(prompt);
+        expect(providerId).toBe("google");
+        expect(thinkingEffort).toBe("medium");
         const currentAttempt = (attempts.get(prompt) ?? 0) + 1;
         attempts.set(prompt, currentAttempt);
 
@@ -115,7 +118,9 @@ describe("analyzeFiles", () => {
   test("converts exhausted retries into file analysis errors", async () => {
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async () => {
+      generateAnalysisObject: async (_model, _prompt, providerId, thinkingEffort) => {
+        expect(providerId).toBe("google");
+        expect(thinkingEffort).toBe("medium");
         throw new Error("always failing");
       },
       writeDebug: () => {},

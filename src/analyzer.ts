@@ -9,7 +9,10 @@ import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
 import { analysisResponseSchema, type AnalysisUsage, type FileAnalysis, type RunSummary } from "./types.js";
 
-export type AnalyzeOptions = Pick<AppConfig, "model" | "concurrency" | "retries" | "debug" | "apiKeys">;
+export type AnalyzeOptions = Pick<
+  AppConfig,
+  "model" | "concurrency" | "retries" | "thinkingEffort" | "debug" | "apiKeys"
+>;
 
 type AnalysisObjectResult = Promise<{
   object: {
@@ -23,18 +26,32 @@ type AnalysisObjectResult = Promise<{
 
 export type AnalyzerDeps = {
   createModel: typeof createModel;
-  generateAnalysisObject: (model: LanguageModelV1, prompt: string) => AnalysisObjectResult;
+  generateAnalysisObject: (
+    model: LanguageModelV1,
+    prompt: string,
+    providerId: string,
+    thinkingEffort: AppConfig["thinkingEffort"],
+  ) => AnalysisObjectResult;
   writeDebug: (message: string) => void;
 };
 
 const defaultAnalyzerDeps: AnalyzerDeps = {
   createModel,
-  generateAnalysisObject: (model, prompt) =>
+  generateAnalysisObject: (model, prompt, providerId, thinkingEffort) =>
     generateObject({
       model,
       schema: analysisResponseSchema,
       temperature: 0,
       prompt,
+      ...(supportsThinkingEffort(providerId)
+        ? {
+            providerOptions: {
+              openai: {
+                reasoningEffort: thinkingEffort,
+              },
+            },
+          }
+        : {}),
     }),
   writeDebug: (message) => {
     process.stderr.write(message);
@@ -117,7 +134,12 @@ async function analyzeWithRetry(
 
   for (let attempt = 0; attempt <= options.retries; attempt += 1) {
     try {
-      const result = await deps.generateAnalysisObject(model, prompt);
+      const result = await deps.generateAnalysisObject(
+        model,
+        prompt,
+        getProviderId(options.model),
+        options.thinkingEffort,
+      );
 
       if (options.debug) {
         deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);
@@ -147,4 +169,13 @@ async function analyzeWithRetry(
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function getProviderId(modelId: string): string {
+  const separatorIndex = modelId.indexOf(":");
+  return separatorIndex === -1 ? "" : modelId.slice(0, separatorIndex).trim();
+}
+
+function supportsThinkingEffort(providerId: string): boolean {
+  return providerId === "openai" || providerId === "openrouter";
 }

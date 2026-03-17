@@ -33,41 +33,62 @@ export function renderOutput(output: CliOutput, format: OutputFormat): string {
 
 export function renderTextReport(output: CliOutput): string {
   const lines: string[] = [];
+  const findings = output.results.filter((result) => result.occurrences.length > 0);
+  const failures = output.results.filter((result) => result.error);
 
-  lines.push(`Model: ${output.model}`);
-  lines.push(`Directory: ${output.rootDirectory}`);
-  lines.push(`Scanned Java files: ${output.summary.scannedJavaFiles}`);
-  lines.push(`Applicable files: ${output.summary.applicableFiles}`);
-  lines.push(`Analyzed files: ${output.summary.analyzedFiles}`);
-  lines.push(`Failed files: ${output.summary.failedFiles}`);
-  lines.push(`Files with findings: ${output.summary.filesWithFindings}`);
-  lines.push(`Total occurrences: ${output.summary.totalOccurrences}`);
-  lines.push(`Input tokens: ${output.summary.inputTokens}`);
-  lines.push(`Output tokens: ${output.summary.outputTokens}`);
-  lines.push(`Total tokens: ${output.summary.totalTokens}`);
+  lines.push(style.bold(style.cyan("SQL Antipattern Detector")));
+  lines.push(`${style.dim("Model")}      ${output.model}`);
+  lines.push(`${style.dim("Directory")}  ${output.rootDirectory}`);
+  lines.push("");
+  lines.push(style.bold("Summary"));
+  lines.push(...renderSummary(output.summary));
 
   if (output.results.length === 0) {
     lines.push("");
-    lines.push("No applicable Java files were found.");
+    lines.push(style.dim("No applicable Java files were found."));
     return lines.join("\n");
   }
 
-  for (const result of output.results) {
+  if (findings.length === 0 && failures.length === 0) {
     lines.push("");
-    lines.push(renderResultHeader(result));
-    if (result.error) {
-      lines.push(`  Analysis failed: ${result.error}`);
-      continue;
-    }
-    if (result.occurrences.length === 0) {
-      lines.push("  No antipatterns found.");
-      continue;
-    }
+    lines.push(style.dim("No antipatterns detected."));
+    return lines.join("\n");
+  }
 
-    for (const occurrence of result.occurrences) {
-      lines.push(`  ${occurrence.antipatternName} (${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`);
-      lines.push(`  Code: ${occurrence.codeFragment}`);
-      lines.push(`  Reasoning: ${occurrence.reasoning}`);
+  if (findings.length > 0) {
+    lines.push("");
+    lines.push(style.bold(style.yellow("Findings")));
+
+    for (const result of findings) {
+      lines.push("");
+      lines.push(renderFileDivider());
+      lines.push(renderResultHeader(result));
+
+      for (const [index, occurrence] of result.occurrences.entries()) {
+        lines.push(
+          `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
+            `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
+          )}`,
+        );
+        lines.push(`  ${style.dim("Code")}      ${occurrence.codeFragment}`);
+        lines.push(`  ${style.dim("Comment")}   ${occurrence.reasoning}`);
+
+        if (index < result.occurrences.length - 1) {
+          lines.push("");
+        }
+      }
+    }
+  }
+
+  if (failures.length > 0) {
+    lines.push("");
+    lines.push(style.bold(style.red("Failures")));
+
+    for (const result of failures) {
+      lines.push("");
+      lines.push(renderFileDivider());
+      lines.push(renderResultHeader(result));
+      lines.push(`  ${style.red("Analysis failed:")} ${result.error}`);
     }
   }
 
@@ -96,7 +117,11 @@ function renderCsvReport(output: CliOutput): string {
 }
 
 function renderResultHeader(result: FileAnalysis): string {
-  return `${result.relativePath} [${result.promptType}]`;
+  return style.bold(style.cyan(result.relativePath));
+}
+
+function renderFileDivider(): string {
+  return style.dim("  ----------------------------------------");
 }
 
 function escapeCsvField(value: string): string {
@@ -105,4 +130,46 @@ function escapeCsvField(value: string): string {
   }
 
   return value;
+}
+
+function renderSummary(summary: RunSummary): string[] {
+  return [
+    renderSummaryLine("Scanned Java files", summary.scannedJavaFiles),
+    renderSummaryLine("Applicable files", summary.applicableFiles),
+    renderSummaryLine("Analyzed files", summary.analyzedFiles),
+    renderSummaryLine("Failed files", summary.failedFiles),
+    renderSummaryLine("Files with findings", summary.filesWithFindings),
+    renderSummaryLine("Total occurrences", summary.totalOccurrences),
+    renderSummaryLine("Input tokens", summary.inputTokens),
+    renderSummaryLine("Output tokens", summary.outputTokens),
+    renderSummaryLine("Total tokens", summary.totalTokens),
+  ];
+}
+
+function renderSummaryLine(label: string, value: number): string {
+  return `${style.dim(label.padEnd(19))} ${String(value).padStart(6)}`;
+}
+
+const style = {
+  bold: (value: string) => colorize("1", value),
+  dim: (value: string) => colorize("2", value),
+  red: (value: string) => colorize("31", value),
+  yellow: (value: string) => colorize("33", value),
+  cyan: (value: string) => colorize("36", value),
+};
+
+function colorize(code: string, value: string): string {
+  if (!supportsColor()) {
+    return value;
+  }
+
+  return `\u001B[${code}m${value}\u001B[0m`;
+}
+
+function supportsColor(): boolean {
+  if ("NO_COLOR" in process.env) {
+    return false;
+  }
+
+  return Boolean(process.stdout?.isTTY);
 }
