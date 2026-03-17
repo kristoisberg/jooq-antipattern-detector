@@ -52,9 +52,7 @@ export function renderTextReport(output: CliOutput): string {
     }
 
     for (const occurrence of result.occurrences) {
-      lines.push(
-        `  ${occurrence.antipatternName} (${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
-      );
+      lines.push(`  ${occurrence.antipatternName} (${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`);
       lines.push(`  Code: ${occurrence.codeFragment}`);
       lines.push(`  Reasoning: ${occurrence.reasoning}`);
     }

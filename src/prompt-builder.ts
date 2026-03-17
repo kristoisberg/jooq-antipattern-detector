@@ -12,7 +12,5 @@ export function buildPrompt(candidate: FileCandidate, prompts: PromptSet): strin
     .map((line) => line.trim())
     .join("\n");
 
-  return template
-    .replace("FILE_CONTENTS", numberedContents)
-    .replace("KEYS_CONTENTS", keysContents);
+  return template.replace("FILE_CONTENTS", numberedContents).replace("KEYS_CONTENTS", keysContents);
 }

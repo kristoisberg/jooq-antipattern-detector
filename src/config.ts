@@ -125,7 +125,8 @@ const configSchema: convict.Schema<ConfigProperties> = {
 const CLI_OPTION_DEFINITIONS: CliOptionDefinition[] = [
   {
     flags: "--model <model>",
-    description: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
+    description:
+      'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
   },
   {
     flags: "--concurrency <number>",
@@ -173,10 +174,7 @@ export function registerCliOptions(program: Command): Command {
   return program;
 }
 
-export function resolveConfig(
-  args: string[] = process.argv.slice(2),
-  env: NodeJS.ProcessEnv = process.env,
-): AppConfig {
+export function resolveConfig(args: string[] = process.argv.slice(2), env: NodeJS.ProcessEnv = process.env): AppConfig {
   const config = convict<ConfigProperties>(configSchema, {
     args,
     env,

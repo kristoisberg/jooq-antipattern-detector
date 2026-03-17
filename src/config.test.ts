@@ -24,14 +24,11 @@ describe("resolveConfig", () => {
   });
 
   test("applies CLI args over environment values", () => {
-    const config = resolveConfig(
-      ["--concurrency", "7", "--debug", "false", "--openai-api-key", "cli-key"],
-      {
-        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
-        OPENAI_API_KEY: "env-key",
-      },
-    );
+    const config = resolveConfig(["--concurrency", "7", "--debug", "false", "--openai-api-key", "cli-key"], {
+      SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
+      SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+      OPENAI_API_KEY: "env-key",
+    });
 
     expect(config.concurrency).toBe(7);
     expect(config.debug).toBe(false);

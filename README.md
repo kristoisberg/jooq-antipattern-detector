@@ -51,6 +51,20 @@ API keys can be provided either as CLI options or environment variables:
 bun install
 ```
 
+## Development
+
+```bash
+bun run format
+bun run lint
+bun run check
+```
+
+To run the full verification flow:
+
+```bash
+bun run check:all
+```
+
 ## Run
 
 ```bash

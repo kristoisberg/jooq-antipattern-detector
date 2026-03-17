@@ -90,9 +90,7 @@ function resolveProvider(modelId: string): ResolvedProvider {
 
   const separatorIndex = normalizedModelId.indexOf(":");
   if (separatorIndex === -1) {
-    throw new Error(
-      'Model identifier must use an explicit provider prefix, for example "google:gemini-2.5-pro".',
-    );
+    throw new Error('Model identifier must use an explicit provider prefix, for example "google:gemini-2.5-pro".');
   }
 
   const providerId = normalizedModelId.slice(0, separatorIndex).trim() as ProviderId;
