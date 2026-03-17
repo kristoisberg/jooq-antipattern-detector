@@ -6,12 +6,30 @@ import { discoverApplicableFiles } from "./file-discovery.js";
 import type { CliOutput } from "./output.js";
 import { loadPrompts } from "./prompts.js";
 
-export async function runAnalysis(directory: string, config: AppConfig): Promise<CliOutput> {
-  const rootDirectory = path.resolve(directory);
-  const prompts = await loadPrompts();
-  const discovery = await discoverApplicableFiles(rootDirectory);
+export type AppDeps = {
+  loadPrompts: typeof loadPrompts;
+  discoverApplicableFiles: typeof discoverApplicableFiles;
+  analyzeFiles: typeof analyzeFiles;
+  now: () => Date;
+};
 
-  const { analyses, summary } = await analyzeFiles(discovery.candidates, prompts, {
+const defaultAppDeps: AppDeps = {
+  loadPrompts,
+  discoverApplicableFiles,
+  analyzeFiles,
+  now: () => new Date(),
+};
+
+export async function runAnalysis(
+  directory: string,
+  config: AppConfig,
+  deps: AppDeps = defaultAppDeps,
+): Promise<CliOutput> {
+  const rootDirectory = path.resolve(directory);
+  const prompts = await deps.loadPrompts();
+  const discovery = await deps.discoverApplicableFiles(rootDirectory);
+
+  const { analyses, summary } = await deps.analyzeFiles(discovery.candidates, prompts, {
     model: config.model,
     concurrency: config.concurrency,
     retries: config.retries,
@@ -24,7 +42,7 @@ export async function runAnalysis(directory: string, config: AppConfig): Promise
   return {
     rootDirectory,
     model: config.model,
-    generatedAt: new Date().toISOString(),
+    generatedAt: deps.now().toISOString(),
     results: analyses,
     summary,
   };

@@ -50,6 +50,45 @@ const sampleOutput: CliOutput = {
 };
 
 describe("renderOutput", () => {
+  test("renders text output for empty results", () => {
+    const rendered = renderOutput(
+      {
+        ...sampleOutput,
+        results: [],
+      },
+      "text",
+    );
+
+    expect(rendered).toContain("Model: google:gemini-2.5-pro");
+    expect(rendered).toContain("No applicable Java files were found.");
+  });
+
+  test("renders text output for findings, failures, and no-findings files", () => {
+    const rendered = renderOutput(
+      {
+        ...sampleOutput,
+        results: [
+          sampleOutput.results[0]!,
+          {
+            filePath: "/tmp/my-project/src/Gamma.java",
+            relativePath: "src/Gamma.java",
+            promptType: "dml-dql",
+            occurrences: [],
+          },
+          sampleOutput.results[1]!,
+        ],
+      },
+      "text",
+    );
+
+    expect(rendered).toContain("src/Alpha.java [ddl]");
+    expect(rendered).toContain("ID Required (10-12)");
+    expect(rendered).toContain("src/Gamma.java [dml-dql]");
+    expect(rendered).toContain("No antipatterns found.");
+    expect(rendered).toContain("src/Beta.java [dml-dql]");
+    expect(rendered).toContain("Analysis failed: Model timeout");
+  });
+
   test("renders csv as one row per occurrence", () => {
     const rendered = renderOutput(sampleOutput, "csv");
 

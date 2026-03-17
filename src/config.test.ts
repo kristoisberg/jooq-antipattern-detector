@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolveConfig } from "./config.js";
+import { Command } from "commander";
+
+import { registerCliOptions, resolveConfig } from "./config.js";
 
 describe("resolveConfig", () => {
   test("uses environment values when CLI args are absent", () => {
@@ -43,5 +45,31 @@ describe("resolveConfig", () => {
     expect(config.retries).toBe(2);
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
+  });
+
+  test("registers the supported CLI options", () => {
+    const program = new Command();
+    registerCliOptions(program);
+
+    expect(program.options.map((option) => option.long)).toEqual([
+      "--model",
+      "--concurrency",
+      "--retries",
+      "--format",
+      "--output",
+      "--debug",
+      "--gemini-api-key",
+      "--anthropic-api-key",
+      "--openai-api-key",
+      "--openrouter-api-key",
+    ]);
+  });
+
+  test("rejects an empty model value", () => {
+    expect(() => resolveConfig(["--model", ""], {})).toThrow("must be a non-empty string");
+  });
+
+  test("rejects invalid positive integer values", () => {
+    expect(() => resolveConfig(["--concurrency", "0"], {})).toThrow("must be a positive integer");
   });
 });

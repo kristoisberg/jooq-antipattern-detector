@@ -10,12 +10,43 @@ import { analysisResponseSchema, type FileAnalysis, type RunSummary } from "./ty
 
 export type AnalyzeOptions = Pick<AppConfig, "model" | "concurrency" | "retries" | "debug" | "apiKeys">;
 
+type GenerateObjectLike = (options: {
+  model: unknown;
+  schema: typeof analysisResponseSchema;
+  temperature: number;
+  prompt: string;
+}) => Promise<{
+  object: {
+    occurrences: FileAnalysis["occurrences"];
+  };
+  usage?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  };
+}>;
+
+export type AnalyzerDeps = {
+  createModel: typeof createModel;
+  generateObject: GenerateObjectLike;
+  writeDebug: (message: string) => void;
+};
+
+const defaultAnalyzerDeps: AnalyzerDeps = {
+  createModel,
+  generateObject: ((options: unknown) => generateObject(options as never)) as unknown as GenerateObjectLike,
+  writeDebug: (message) => {
+    process.stderr.write(message);
+  },
+};
+
 export async function analyzeFiles(
   candidates: FileCandidate[],
   prompts: PromptSet,
   options: AnalyzeOptions,
+  deps: AnalyzerDeps = defaultAnalyzerDeps,
 ): Promise<{ analyses: FileAnalysis[]; summary: RunSummary }> {
-  const model = createModel(options.model, options.apiKeys);
+  const model = deps.createModel(options.model, options.apiKeys);
   const limit = pLimit(Math.max(1, options.concurrency));
 
   const analyses = await Promise.all(
@@ -23,7 +54,7 @@ export async function analyzeFiles(
       limit(async () => {
         const prompt = buildPrompt(candidate, prompts);
 
-        return analyzeWithRetry(model, candidate, prompt, options).catch((error) =>
+        return analyzeWithRetry(model, candidate, prompt, options, deps).catch((error) =>
           buildFailedAnalysis(candidate, error),
         );
       }),
@@ -75,16 +106,17 @@ function buildFailedAnalysis(candidate: FileCandidate, error: unknown): FileAnal
 }
 
 async function analyzeWithRetry(
-  model: ReturnType<typeof createModel>,
+  model: ReturnType<AnalyzerDeps["createModel"]>,
   candidate: FileCandidate,
   prompt: string,
   options: AnalyzeOptions,
+  deps: AnalyzerDeps,
 ): Promise<FileAnalysis> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= options.retries; attempt += 1) {
     try {
-      const result = await generateObject({
+      const result = await deps.generateObject({
         model,
         schema: analysisResponseSchema,
         temperature: 0,
@@ -92,9 +124,7 @@ async function analyzeWithRetry(
       });
 
       if (options.debug) {
-        process.stderr.write(
-          `[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`,
-        );
+        deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);
       }
 
       return {
@@ -111,9 +141,7 @@ async function analyzeWithRetry(
     } catch (error) {
       lastError = error;
       if (options.debug) {
-        process.stderr.write(
-          `[retry] ${candidate.relativePath} failed on attempt ${attempt + 1}: ${formatError(error)}\n`,
-        );
+        deps.writeDebug(`[retry] ${candidate.relativePath} failed on attempt ${attempt + 1}: ${formatError(error)}\n`);
       }
     }
   }

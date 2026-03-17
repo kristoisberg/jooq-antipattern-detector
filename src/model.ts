@@ -25,52 +25,62 @@ type ResolvedProvider = {
   modelId: string;
 };
 
-const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
-  google: {
-    id: "google",
-    apiKeyField: "gemini",
-    envName: "GEMINI_API_KEY",
-    cliFlag: "--gemini-api-key",
-    create: (modelId, apiKey) =>
-      createGoogleGenerativeAI({
-        apiKey,
-      })(modelId),
-  },
-  anthropic: {
-    id: "anthropic",
-    apiKeyField: "anthropic",
-    envName: "ANTHROPIC_API_KEY",
-    cliFlag: "--anthropic-api-key",
-    create: (modelId, apiKey) =>
-      createAnthropic({
-        apiKey,
-      })(modelId),
-  },
-  openai: {
-    id: "openai",
-    apiKeyField: "openai",
-    envName: "OPENAI_API_KEY",
-    cliFlag: "--openai-api-key",
-    create: (modelId, apiKey) =>
-      createOpenAI({
-        apiKey,
-      })(modelId),
-  },
-  openrouter: {
-    id: "openrouter",
-    apiKeyField: "openrouter",
-    envName: "OPENROUTER_API_KEY",
-    cliFlag: "--openrouter-api-key",
-    create: (modelId, apiKey) =>
-      createOpenAI({
-        apiKey,
-        baseURL: "https://openrouter.ai/api/v1",
-      })(modelId),
+export type ModelDeps = {
+  providers: Record<ProviderId, ProviderDefinition>;
+};
+
+const defaultModelDeps: ModelDeps = {
+  providers: {
+    google: {
+      id: "google",
+      apiKeyField: "gemini",
+      envName: "GEMINI_API_KEY",
+      cliFlag: "--gemini-api-key",
+      create: (modelId, apiKey) =>
+        createGoogleGenerativeAI({
+          apiKey,
+        })(modelId),
+    },
+    anthropic: {
+      id: "anthropic",
+      apiKeyField: "anthropic",
+      envName: "ANTHROPIC_API_KEY",
+      cliFlag: "--anthropic-api-key",
+      create: (modelId, apiKey) =>
+        createAnthropic({
+          apiKey,
+        })(modelId),
+    },
+    openai: {
+      id: "openai",
+      apiKeyField: "openai",
+      envName: "OPENAI_API_KEY",
+      cliFlag: "--openai-api-key",
+      create: (modelId, apiKey) =>
+        createOpenAI({
+          apiKey,
+        })(modelId),
+    },
+    openrouter: {
+      id: "openrouter",
+      apiKeyField: "openrouter",
+      envName: "OPENROUTER_API_KEY",
+      cliFlag: "--openrouter-api-key",
+      create: (modelId, apiKey) =>
+        createOpenAI({
+          apiKey,
+          baseURL: "https://openrouter.ai/api/v1",
+        })(modelId),
+    },
   },
 };
 
-export function createModel(modelId: string, apiKeys: ModelApiKeys): LanguageModelV1 {
-  const resolved = resolveProvider(modelId);
+export function createModel(
+  modelId: string,
+  apiKeys: ModelApiKeys,
+  deps: ModelDeps = defaultModelDeps,
+): LanguageModelV1 {
+  const resolved = resolveProvider(modelId, deps.providers);
   const apiKey = apiKeys[resolved.definition.apiKeyField];
 
   if (!apiKey) {
@@ -82,7 +92,7 @@ export function createModel(modelId: string, apiKeys: ModelApiKeys): LanguageMod
   return resolved.definition.create(resolved.modelId, apiKey);
 }
 
-function resolveProvider(modelId: string): ResolvedProvider {
+function resolveProvider(modelId: string, providers: ModelDeps["providers"]): ResolvedProvider {
   const normalizedModelId = modelId.trim();
   if (!normalizedModelId) {
     throw new Error("Model identifier must be a non-empty string.");
@@ -96,7 +106,7 @@ function resolveProvider(modelId: string): ResolvedProvider {
   const providerId = normalizedModelId.slice(0, separatorIndex).trim() as ProviderId;
   const providerModelId = normalizedModelId.slice(separatorIndex + 1).trim();
 
-  if (!(providerId in PROVIDERS)) {
+  if (!(providerId in providers)) {
     throw new Error(
       `Unsupported provider prefix "${normalizedModelId.slice(0, separatorIndex)}". Use "google:", "anthropic:", "openai:", or "openrouter:".`,
     );
@@ -107,7 +117,7 @@ function resolveProvider(modelId: string): ResolvedProvider {
   }
 
   return {
-    definition: PROVIDERS[providerId],
+    definition: providers[providerId],
     modelId: providerModelId,
   };
 }
