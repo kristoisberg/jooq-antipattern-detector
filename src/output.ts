@@ -140,6 +140,7 @@ function renderSummary(summary: RunSummary): string[] {
     renderSummaryLine("Failed files", summary.failedFiles),
     renderSummaryLine("Files with findings", summary.filesWithFindings),
     renderSummaryLine("Total occurrences", summary.totalOccurrences),
+    renderSummaryLine("Distinct antipatterns", summary.distinctAntipatterns),
     renderSummaryLine("Input tokens", summary.inputTokens),
     renderSummaryLine("Output tokens", summary.outputTokens),
     renderSummaryLine("Total tokens", summary.totalTokens),

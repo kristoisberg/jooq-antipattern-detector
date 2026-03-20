@@ -104,6 +104,7 @@ describe("analyzeFiles", () => {
       failedFiles: 0,
       filesWithFindings: 1,
       totalOccurrences: 1,
+      distinctAntipatterns: 1,
       inputTokens: 8,
       outputTokens: 10,
       totalTokens: 18,
@@ -140,5 +141,6 @@ describe("analyzeFiles", () => {
     expect(result.summary.failedFiles).toBe(1);
     expect(result.summary.analyzedFiles).toBe(0);
     expect(result.summary.totalOccurrences).toBe(0);
+    expect(result.summary.distinctAntipatterns).toBe(0);
   });
 });

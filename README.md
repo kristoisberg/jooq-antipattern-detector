@@ -122,6 +122,8 @@ JSON output contains:
 - `results`
 - `summary`
 
+The `summary` object includes aggregate counts such as total occurrences and distinct antipatterns found.
+
 Each result includes:
 
 - `filePath`

@@ -81,12 +81,17 @@ export async function analyzeFiles(
 
   analyses.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 
+  const distinctAntipatterns = new Set<FileAnalysis["occurrences"][number]["antipatternName"]>();
+
   const summary = analyses.reduce<RunSummary>(
     (acc, analysis) => {
       if (analysis.error) {
         acc.failedFiles += 1;
       } else {
         acc.analyzedFiles += 1;
+        for (const occurrence of analysis.occurrences) {
+          distinctAntipatterns.add(occurrence.antipatternName);
+        }
       }
       if (analysis.occurrences.length > 0) {
         acc.filesWithFindings += 1;
@@ -104,11 +109,14 @@ export async function analyzeFiles(
       failedFiles: 0,
       filesWithFindings: 0,
       totalOccurrences: 0,
+      distinctAntipatterns: 0,
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
     },
   );
+
+  summary.distinctAntipatterns = distinctAntipatterns.size;
 
   return { analyses, summary };
 }

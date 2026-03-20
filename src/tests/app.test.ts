@@ -40,6 +40,7 @@ describe("createCliOutput", () => {
       failedFiles: 0,
       filesWithFindings: 0,
       totalOccurrences: 0,
+      distinctAntipatterns: 0,
       inputTokens: 1,
       outputTokens: 2,
       totalTokens: 3,

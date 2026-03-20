@@ -46,6 +46,7 @@ export type RunSummary = {
   failedFiles: number;
   filesWithFindings: number;
   totalOccurrences: number;
+  distinctAntipatterns: number;
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;

@@ -13,6 +13,7 @@ const sampleOutput: CliOutput = {
     failedFiles: 0,
     filesWithFindings: 1,
     totalOccurrences: 2,
+    distinctAntipatterns: 2,
     inputTokens: 10,
     outputTokens: 20,
     totalTokens: 30,
@@ -87,6 +88,7 @@ describe("renderOutput", () => {
     );
 
     expect(rendered).toContain("Summary");
+    expect(rendered).toContain("Distinct antipatterns");
     expect(rendered).toContain("Findings");
     expect(rendered).toContain("Failures");
     expect(rendered).toContain("  ----------------------------------------\nsrc/Alpha.java");
@@ -120,6 +122,7 @@ describe("renderOutput", () => {
             ...sampleOutput.summary,
             filesWithFindings: 0,
             totalOccurrences: 0,
+            distinctAntipatterns: 0,
           },
         },
         "text",
