@@ -66,7 +66,7 @@ describe("analyzeFiles", () => {
                   linesRangeStart: 2,
                   linesRangeEnd: 4,
                   codeFragment: "id",
-                  reasoning: "bad key",
+                  explanation: "This uses a generic surrogate key. Rename it to a domain-specific key or use the existing natural key.",
                 },
               ],
             },

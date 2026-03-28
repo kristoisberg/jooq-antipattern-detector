@@ -70,8 +70,8 @@ export function renderTextReport(output: CliOutput): string {
             `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
           )}`,
         );
-        lines.push(`  ${style.dim("Code")}      ${occurrence.codeFragment}`);
-        lines.push(`  ${style.dim("Comment")}   ${occurrence.reasoning}`);
+        lines.push(...renderDetailBlock("Code", occurrence.codeFragment));
+        lines.push(...renderDetailBlock("Explanation", occurrence.explanation));
 
         if (index < result.occurrences.length - 1) {
           lines.push("");
@@ -98,7 +98,7 @@ export function renderTextReport(output: CliOutput): string {
 function renderCsvReport(output: CliOutput): string {
   const projectName = path.basename(output.rootDirectory);
   const rows = [
-    ["Project", "Antipattern", "File", "Line from", "Line to", "Comment"],
+    ["Project", "Antipattern", "File", "Line from", "Line to", "Explanation"],
     ...output.results.flatMap((result) =>
       result.error
         ? []
@@ -108,7 +108,7 @@ function renderCsvReport(output: CliOutput): string {
             result.relativePath,
             String(occurrence.linesRangeStart),
             String(occurrence.linesRangeEnd),
-            occurrence.reasoning,
+            occurrence.explanation,
           ]),
     ),
   ];
@@ -122,6 +122,14 @@ function renderResultHeader(result: FileAnalysis): string {
 
 function renderFileDivider(): string {
   return style.dim("  ----------------------------------------");
+}
+
+function renderDetailBlock(label: string, value: string): string[] {
+  const normalizedLines = value.split(/\r?\n/);
+  const [firstLine = "", ...restLines] = normalizedLines;
+  const labelColumn = `${style.dim(label)}${" ".repeat(Math.max(1, 12 - label.length))}`;
+
+  return [`  ${labelColumn}${firstLine}`, ...restLines.map((line) => `  ${" ".repeat(12)}${line}`)];
 }
 
 function escapeCsvField(value: string): string {
@@ -148,7 +156,7 @@ function renderSummary(summary: RunSummary): string[] {
 }
 
 function renderSummaryLine(label: string, value: number): string {
-  return `${style.dim(label.padEnd(19))} ${String(value).padStart(6)}`;
+  return `${style.dim(label.padEnd(21))} ${String(value).padStart(6)}`;
 }
 
 const style = {

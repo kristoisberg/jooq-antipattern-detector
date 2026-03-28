@@ -102,7 +102,7 @@ GEMINI_API_KEY=... bun run src/cli.ts ./path/to/project --model google:gemini-2.
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1
 ```
 
-`thinking-effort` accepts `low`, `medium`, or `high`. It is forwarded for `openai:` and `openrouter:` models.
+`thinking-effort` accepts `none`, `minimal`, `low`, `medium`, `high`, or `xhigh`. It is forwarded for `openai:` and `openrouter:` models.
 
 ## Build a native binary
 
@@ -139,4 +139,4 @@ CSV output contains one row per antipattern occurrence with these columns:
 - `File`
 - `Line from`
 - `Line to`
-- `Comment`
+- `Explanation`

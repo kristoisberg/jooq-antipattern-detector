@@ -15,7 +15,7 @@ export const antipatternOccurrenceSchema = z.object({
   linesRangeStart: z.number().int().positive(),
   linesRangeEnd: z.number().int().positive(),
   codeFragment: z.string(),
-  reasoning: z.string(),
+  explanation: z.string(),
 });
 
 export const analysisResponseSchema = z.object({

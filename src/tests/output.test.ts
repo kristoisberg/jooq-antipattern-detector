@@ -29,14 +29,15 @@ const sampleOutput: CliOutput = {
           linesRangeStart: 10,
           linesRangeEnd: 12,
           codeFragment: "id BIGINT",
-          reasoning: 'Primary key uses "id", which is too generic.',
+          explanation: 'This table uses a generic "id" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key.',
         },
         {
           antipatternName: "31 Flavors",
           linesRangeStart: 20,
           linesRangeEnd: 20,
           codeFragment: "status ENUM(...)",
-          reasoning: 'Use a lookup table, not enum,\nand escape "quotes" correctly.',
+          explanation:
+            'This enum hard-codes allowed values in the schema, which makes changes harder to roll out. Move the values into a lookup table and reference it with a foreign key,\nand escape "quotes" correctly.',
         },
       ],
     },
@@ -94,9 +95,17 @@ describe("renderOutput", () => {
     expect(rendered).toContain("  ----------------------------------------\nsrc/Alpha.java");
     expect(rendered).toContain("src/Alpha.java");
     expect(rendered).toContain("ID Required (10-12)");
-    expect(rendered).toContain("Code      id BIGINT");
-    expect(rendered).toContain('Comment   Primary key uses "id", which is too generic.');
-    expect(rendered).toContain('Comment   Primary key uses "id", which is too generic.\n\n  31 Flavors (20-20)');
+    expect(rendered).toContain("Code        id BIGINT");
+    expect(rendered).toContain(
+      'Explanation This table uses a generic "id" primary key, which hides the real business identifier.',
+    );
+    expect(rendered).toContain(
+      'primary key.\n\n  31 Flavors (20-20)',
+    );
+    expect(rendered).toContain("Code        status ENUM(...)");
+    expect(rendered).toContain(
+      'foreign key,\n              and escape "quotes" correctly.',
+    );
     expect(rendered).not.toContain("src/Gamma.java");
     expect(rendered).not.toContain("[ddl]");
     expect(rendered).not.toContain("[dml-dql]");
@@ -138,9 +147,9 @@ describe("renderOutput", () => {
 
     expect(rendered).toBe(
       [
-        "Project,Antipattern,File,Line from,Line to,Comment",
-        'my-project,ID Required,src/Alpha.java,10,12,"Primary key uses ""id"", which is too generic."',
-        'my-project,31 Flavors,src/Alpha.java,20,20,"Use a lookup table, not enum,',
+        "Project,Antipattern,File,Line from,Line to,Explanation",
+        'my-project,ID Required,src/Alpha.java,10,12,"This table uses a generic ""id"" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key."',
+        'my-project,31 Flavors,src/Alpha.java,20,20,"This enum hard-codes allowed values in the schema, which makes changes harder to roll out. Move the values into a lookup table and reference it with a foreign key,',
         'and escape ""quotes"" correctly."',
       ].join("\n"),
     );
@@ -159,7 +168,7 @@ describe("renderOutput", () => {
       "csv",
     );
 
-    expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Comment");
+    expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Explanation");
   });
 });
 

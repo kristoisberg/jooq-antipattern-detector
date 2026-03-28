@@ -49,4 +49,13 @@ describe("createProgram", () => {
     expect(program.description()).toBe("Detect SQL antipatterns in Java/jOOQ codebases with an LLM-backed analyzer.");
     expect(program.options.some((option) => option.long === "--format")).toBe(true);
   });
+
+  test("describes the supported thinking effort values in help text", () => {
+    const program = createProgram();
+    const option = program.options.find((candidate) => candidate.long === "--thinking-effort");
+
+    expect(option?.description).toBe(
+      "Thinking effort for supported reasoning models: none, minimal, low, medium, high, or xhigh",
+    );
+  });
 });

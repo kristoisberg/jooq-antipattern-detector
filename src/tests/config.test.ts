@@ -29,7 +29,7 @@ describe("resolveConfig", () => {
 
   test("applies CLI args over environment values", () => {
     const config = resolveConfig(
-      ["--concurrency", "7", "--thinking-effort", "low", "--debug", "false", "--openai-api-key", "cli-key"],
+      ["--concurrency", "7", "--thinking-effort", "xhigh", "--debug", "false", "--openai-api-key", "cli-key"],
       {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
         SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
@@ -39,9 +39,17 @@ describe("resolveConfig", () => {
     );
 
     expect(config.concurrency).toBe(7);
-    expect(config.thinkingEffort).toBe("low");
+    expect(config.thinkingEffort).toBe("xhigh");
     expect(config.debug).toBe(false);
     expect(config.apiKeys.openai).toBe("cli-key");
+  });
+
+  test("accepts newly supported thinking effort values from the environment", () => {
+    const config = resolveConfig([], {
+      SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
+    });
+
+    expect(config.thinkingEffort).toBe("minimal");
   });
 
   test("falls back to defaults when env and CLI are absent", () => {

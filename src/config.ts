@@ -4,7 +4,7 @@ import type { Command } from "commander";
 import { PROVIDER_DEFINITIONS, type ModelApiKeys } from "./providers.js";
 
 export type OutputFormat = "text" | "json" | "csv";
-export type ThinkingEffort = "low" | "medium" | "high";
+export type ThinkingEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
 export type AppConfig = {
   model: string;
@@ -79,10 +79,10 @@ const OPTION_DEFINITIONS = {
   },
   thinkingEffort: {
     flags: "--thinking-effort <effort>",
-    description: "Reasoning effort for supported reasoning models: low, medium, or high",
+    description: "Thinking effort for supported reasoning models: none, minimal, low, medium, high, or xhigh",
     schema: {
-      doc: "Reasoning effort for supported reasoning models",
-      format: ["low", "medium", "high"] as ThinkingEffort[],
+      doc: "Thinking effort for supported reasoning models",
+      format: ["none", "minimal", "low", "medium", "high", "xhigh"] as ThinkingEffort[],
       default: "medium" as ThinkingEffort,
       env: "SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT",
       arg: "thinking-effort",
