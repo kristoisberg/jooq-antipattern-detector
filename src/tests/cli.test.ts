@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createProgram, renderCliOutput, resolveOutputTarget } from "../cli.js";
+import { createProgram, executeCli, renderCliOutput, resolveOutputTarget } from "../cli.js";
 import type { CliOutput } from "../output.js";
 
 const baseOutput: CliOutput = {
@@ -15,6 +15,7 @@ const baseOutput: CliOutput = {
     failedFiles: 0,
     filesWithFindings: 0,
     totalOccurrences: 0,
+    distinctAntipatterns: 0,
     inputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,
@@ -57,5 +58,37 @@ describe("createProgram", () => {
     expect(option?.description).toBe(
       "Thinking effort for supported reasoning models: none, minimal, low, medium, high, or xhigh",
     );
+  });
+});
+
+describe("executeCli", () => {
+  test("creates the parent directory automatically when --output is used", async () => {
+    const calls: Array<{ type: "mkdir" | "writeFile"; path: string; payload?: string }> = [];
+
+    await executeCli(
+      "/tmp/project",
+      ["--output", "reports/findings.json", "--anthropic-api-key", "test-key"],
+      {
+        runAnalysis: async () => baseOutput,
+        mkdir: async (dir) => {
+          calls.push({ type: "mkdir", path: dir });
+        },
+        writeFile: async (filePath, contents) => {
+          calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
+        },
+        writeStdout: () => {
+          throw new Error("stdout should not be used when output file is configured");
+        },
+      },
+    );
+
+    expect(calls).toEqual([
+      { type: "mkdir", path: `${process.cwd()}/reports` },
+      {
+        type: "writeFile",
+        path: `${process.cwd()}/reports/findings.json`,
+        payload: renderCliOutput(baseOutput, "text"),
+      },
+    ]);
   });
 });

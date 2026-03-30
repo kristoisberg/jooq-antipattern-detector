@@ -9,6 +9,20 @@ import { runAnalysis } from "./app.js";
 import { registerCliOptions, resolveConfig } from "./config.js";
 import { renderOutput } from "./output.js";
 
+type CliDeps = {
+  runAnalysis: typeof runAnalysis;
+  mkdir: typeof mkdir;
+  writeFile: typeof writeFile;
+  writeStdout: typeof writeStdout;
+};
+
+const defaultCliDeps: CliDeps = {
+  runAnalysis,
+  mkdir,
+  writeFile,
+  writeStdout,
+};
+
 export function renderCliOutput(
   output: Parameters<typeof renderOutput>[0],
   format: Parameters<typeof renderOutput>[1],
@@ -36,19 +50,23 @@ function writeStdout(message: string): void {
   process.stdout.write(message);
 }
 
-export async function executeCli(directory: string, args: string[] = process.argv.slice(2)): Promise<void> {
+export async function executeCli(
+  directory: string,
+  args: string[] = process.argv.slice(2),
+  deps: CliDeps = defaultCliDeps,
+): Promise<void> {
   const config = resolveConfig(args);
-  const output = await runAnalysis(directory, config);
+  const output = await deps.runAnalysis(directory, config);
   const renderedOutput = renderCliOutput(output, config.format);
   const target = resolveOutputTarget(config.output);
 
   if (target.type === "file") {
-    await mkdir(target.dir, { recursive: true });
-    await writeFile(target.path, renderedOutput, "utf8");
+    await deps.mkdir(target.dir, { recursive: true });
+    await deps.writeFile(target.path, renderedOutput, "utf8");
     return;
   }
 
-  writeStdout(renderedOutput);
+  deps.writeStdout(renderedOutput);
 }
 
 export function createProgram(): Command {
