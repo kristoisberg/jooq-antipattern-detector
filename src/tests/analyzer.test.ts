@@ -143,4 +143,76 @@ describe("analyzeFiles", () => {
     expect(result.summary.totalOccurrences).toBe(0);
     expect(result.summary.distinctAntipatterns).toBe(0);
   });
+
+  test("retries when the model returns an object that does not match the schema", async () => {
+    const debugMessages: string[] = [];
+    let attempts = 0;
+
+    const deps: AnalyzerDeps = {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return {
+            object: {
+              occurrences: [
+                {
+                  antipatternName: "Not A Real Antipattern",
+                  linesRangeStart: 1,
+                  linesRangeEnd: 1,
+                  codeFragment: "bad",
+                  explanation: "bad",
+                },
+              ],
+            } as never,
+          };
+        }
+
+        return {
+          object: {
+            occurrences: [
+              {
+                antipatternName: "ID Required",
+                linesRangeStart: 1,
+                linesRangeEnd: 1,
+                codeFragment: "id",
+                explanation: "valid",
+              },
+            ],
+          },
+        };
+      },
+      writeDebug: (message) => {
+        debugMessages.push(message);
+      },
+    };
+
+    const result = await analyzeFiles([candidates[0]], prompts, { ...options, retries: 1, debug: true }, deps);
+
+    expect(attempts).toBe(2);
+    expect(result.analyses).toEqual([
+      {
+        filePath: "/tmp/project/b.java",
+        relativePath: "b.java",
+        promptType: "dml-dql",
+        occurrences: [
+          {
+            antipatternName: "ID Required",
+            linesRangeStart: 1,
+            linesRangeEnd: 1,
+            codeFragment: "id",
+            explanation: "valid",
+          },
+        ],
+        usage: {
+          inputTokens: undefined,
+          outputTokens: undefined,
+          totalTokens: undefined,
+        },
+      },
+    ]);
+    expect(debugMessages.some((message) => message.startsWith("[retry] b.java failed on attempt 1: ["))).toBe(true);
+    expect(debugMessages).toContain("[analyzed] b.java (dml-dql, attempt 2)\n");
+  });
 });

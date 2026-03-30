@@ -148,6 +148,7 @@ async function analyzeWithRetry(
         getProviderId(options.model),
         options.thinkingEffort,
       );
+      const validatedObject = analysisResponseSchema.parse(result.object);
 
       if (options.debug) {
         deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);
@@ -157,7 +158,7 @@ async function analyzeWithRetry(
         filePath: candidate.absolutePath,
         relativePath: candidate.relativePath,
         promptType: candidate.promptType,
-        occurrences: result.object.occurrences,
+        occurrences: validatedObject.occurrences,
         usage: {
           inputTokens: result.usage?.promptTokens,
           outputTokens: result.usage?.completionTokens,
