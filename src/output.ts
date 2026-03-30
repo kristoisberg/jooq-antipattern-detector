@@ -59,14 +59,15 @@ export function renderTextReport(output: CliOutput): string {
 
   if (findings.length > 0) {
     lines.push("");
-    lines.push(style.bold(style.yellow("Findings")));
+    lines.push(style.bold(style.yellow(output.mode === "classification" ? "Classifications" : "Findings")));
 
     for (const result of findings) {
       lines.push("");
-      lines.push(renderFileDivider());
-      lines.push(renderResultHeader(result));
 
       if ("occurrences" in result) {
+        lines.push(renderFileDivider());
+        lines.push(renderResultHeader(result));
+
         for (const [index, occurrence] of result.occurrences.entries()) {
           lines.push(
             `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
@@ -80,11 +81,11 @@ export function renderTextReport(output: CliOutput): string {
             lines.push("");
           }
         }
-      } else {
-        for (const antipattern of result.antipatterns) {
-          lines.push(`  ${style.bold(style.yellow(antipattern))}`);
-        }
+
+        continue;
       }
+
+      lines.push(...renderClassificationResult(result));
     }
   }
 
@@ -145,6 +146,14 @@ function renderFileDivider(): string {
   return style.dim("  ----------------------------------------");
 }
 
+function renderClassificationResult(result: Extract<FileAnalysis, { antipatterns: string[] }>): string[] {
+  return [
+    style.bold(style.cyan(result.relativePath)),
+    `  ${style.dim(pluralize("antipattern", result.antipatterns.length))}`,
+    ...result.antipatterns.map((antipattern) => `  ${style.dim("•")} ${style.bold(style.yellow(antipattern))}`),
+  ];
+}
+
 function renderDetailBlock(label: string, value: string): string[] {
   const normalizedLines = value.split(/\r?\n/);
   const [firstLine = "", ...restLines] = normalizedLines;
@@ -182,6 +191,10 @@ function getFindingCount(result: FileAnalysis): number {
 
 function renderSummaryLine(label: string, value: number): string {
   return `${style.dim(label.padEnd(21))} ${String(value).padStart(6)}`;
+}
+
+function pluralize(noun: string, count: number): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 const style = {

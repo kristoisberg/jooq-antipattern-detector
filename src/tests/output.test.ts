@@ -201,11 +201,18 @@ describe("renderOutput", () => {
     const renderedText = stripAnsi(renderOutput(classificationOutput, "text"));
     expect(renderedText).toContain("Mode");
     expect(renderedText).toContain("classification");
+    expect(renderedText).toContain("Classifications");
     expect(renderedText).toContain("src/Alpha.java");
+    expect(renderedText).toContain("2 antipatterns");
+    expect(renderedText).toContain("  • ID Required");
+    expect(renderedText).toContain("  • 31 Flavors");
     expect(renderedText).toContain("ID Required");
     expect(renderedText).toContain("31 Flavors");
+    expect(renderedText).toContain("1 antipattern");
+    expect(renderedText).toContain("  • Beware of the Unknown");
     expect(renderedText).not.toContain("Code        ");
     expect(renderedText).not.toContain("Explanation ");
+    expect(renderedText).not.toContain("  ----------------------------------------");
 
     const renderedCsv = renderOutput(classificationOutput, "csv");
     expect(renderedCsv).toBe(
