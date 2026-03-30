@@ -12,7 +12,7 @@ import { renderOutput } from "./output.js";
 type CliDeps = {
   runAnalysis: typeof runAnalysis;
   mkdir: typeof mkdir;
-  stat: typeof stat;
+  stat: (path: string) => Promise<{ isDirectory(): boolean }>;
   writeFile: typeof writeFile;
   writeStdout: typeof writeStdout;
 };

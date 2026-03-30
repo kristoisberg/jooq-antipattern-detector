@@ -67,6 +67,7 @@ bun run src/cli.ts ./path/to/project
 Useful options:
 
 ```bash
+bun run src/cli.ts ./path/to/project --config-file ./detector.yml
 bun run src/cli.ts ./path/to/project --format json
 bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
@@ -77,11 +78,32 @@ bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 All option-style configuration parameters support the same precedence:
 
 ```text
-CLI parameter -> environment variable -> default
+CLI parameter -> environment variable -> YAML config file -> default
+```
+
+Configuration file lookup:
+
+- explicit path from `--config-file <file>`
+- otherwise `SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE`
+- otherwise `~/.sql-antipattern-detector.yml` if it exists
+
+Example YAML config:
+
+```yaml
+model: openai:gpt-4.1
+concurrency: 4
+retries: 3
+thinkingEffort: high
+format: json
+output: reports/findings.json
+debug: false
+apiKeys:
+  openai: your-api-key
 ```
 
 Environment variables:
 
+- `SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE`
 - `SQL_ANTIPATTERN_DETECTOR_MODEL`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
@@ -97,6 +119,7 @@ Environment variables:
 Examples:
 
 ```bash
+SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE=./detector.yml bun run src/cli.ts ./path/to/project
 SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/findings.json bun run src/cli.ts ./path/to/project
 ANTHROPIC_API_KEY=... bun run src/cli.ts ./path/to/project --model anthropic:claude-opus-4-5
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1

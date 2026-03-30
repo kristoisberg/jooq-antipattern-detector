@@ -1,7 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
+import type { Stats } from "node:fs";
+
 import { createProgram, executeCli, renderCliOutput, resolveOutputTarget } from "../cli.js";
 import type { CliOutput } from "../output.js";
+
+const directoryStats = {
+  isDirectory: () => true,
+} as Stats;
+
+const fileStats = {
+  isDirectory: () => false,
+} as Stats;
 
 const baseOutput: CliOutput = {
   rootDirectory: "/tmp/project",
@@ -71,12 +81,9 @@ describe("executeCli", () => {
       {
         runAnalysis: async () => baseOutput,
         mkdir: async (dir) => {
-          calls.push({ type: "mkdir", path: dir });
+          calls.push({ type: "mkdir", path: dir.toString() });
         },
-        stat: async () =>
-          ({
-            isDirectory: () => true,
-          }) as Awaited<ReturnType<typeof import("node:fs/promises").stat>>,
+        stat: async (): Promise<Stats> => directoryStats,
         writeFile: async (filePath, contents) => {
           calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
         },
@@ -117,10 +124,7 @@ describe("executeCli", () => {
       executeCli("/tmp/not-a-directory", ["--anthropic-api-key", "test-key"], {
         runAnalysis: async () => baseOutput,
         mkdir: async () => undefined,
-        stat: async () =>
-          ({
-            isDirectory: () => false,
-          }) as Awaited<ReturnType<typeof import("node:fs/promises").stat>>,
+        stat: async (): Promise<Stats> => fileStats,
         writeFile: async () => undefined,
         writeStdout: () => undefined,
       }),
