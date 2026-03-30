@@ -25,7 +25,7 @@ Use a model name with one of these prefixes:
 Examples:
 
 ```bash
-sql-antipattern-detector ./my-project --model google:gemini-2.5-pro
+sql-antipattern-detector ./my-project --model anthropic:claude-opus-4-5
 sql-antipattern-detector ./my-project --model anthropic:claude-3-7-sonnet-latest
 sql-antipattern-detector ./my-project --model openai:gpt-4.1
 sql-antipattern-detector ./my-project --model openrouter:openai/gpt-4.1
@@ -98,7 +98,7 @@ Examples:
 
 ```bash
 SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/findings.json bun run src/cli.ts ./path/to/project
-GEMINI_API_KEY=... bun run src/cli.ts ./path/to/project --model google:gemini-2.5-pro
+ANTHROPIC_API_KEY=... bun run src/cli.ts ./path/to/project --model anthropic:claude-opus-4-5
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1
 ```
 

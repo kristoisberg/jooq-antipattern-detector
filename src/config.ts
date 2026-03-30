@@ -50,7 +50,7 @@ const OPTION_DEFINITIONS = {
     schema: {
       doc: 'Model identifier. Must use an explicit provider prefix: "google:", "anthropic:", "openai:", or "openrouter:".',
       format: nonEmptyString,
-      default: "google:gemini-2.5-pro",
+      default: "anthropic:claude-opus-4-5",
       env: "SQL_ANTIPATTERN_DETECTOR_MODEL",
       arg: "model",
     },
@@ -83,7 +83,7 @@ const OPTION_DEFINITIONS = {
     schema: {
       doc: "Thinking effort for supported reasoning models",
       format: ["none", "minimal", "low", "medium", "high", "xhigh"] as ThinkingEffort[],
-      default: "medium" as ThinkingEffort,
+      default: "none" as ThinkingEffort,
       env: "SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT",
       arg: "thinking-effort",
     },

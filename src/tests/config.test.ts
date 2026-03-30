@@ -55,10 +55,10 @@ describe("resolveConfig", () => {
   test("falls back to defaults when env and CLI are absent", () => {
     const config = resolveConfig([], {});
 
-    expect(config.model).toBe("google:gemini-2.5-pro");
+    expect(config.model).toBe("anthropic:claude-opus-4-5");
     expect(config.concurrency).toBe(8);
     expect(config.retries).toBe(2);
-    expect(config.thinkingEffort).toBe("medium");
+    expect(config.thinkingEffort).toBe("none");
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
   });
