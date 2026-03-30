@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { Command } from "commander";
@@ -12,6 +12,7 @@ import { renderOutput } from "./output.js";
 type CliDeps = {
   runAnalysis: typeof runAnalysis;
   mkdir: typeof mkdir;
+  stat: typeof stat;
   writeFile: typeof writeFile;
   writeStdout: typeof writeStdout;
 };
@@ -19,6 +20,7 @@ type CliDeps = {
 const defaultCliDeps: CliDeps = {
   runAnalysis,
   mkdir,
+  stat,
   writeFile,
   writeStdout,
 };
@@ -55,8 +57,10 @@ export async function executeCli(
   args: string[] = process.argv.slice(2),
   deps: CliDeps = defaultCliDeps,
 ): Promise<void> {
+  const resolvedDirectory = path.resolve(directory);
+  await assertDirectoryExists(resolvedDirectory, deps);
   const config = resolveConfig(args);
-  const output = await deps.runAnalysis(directory, config);
+  const output = await deps.runAnalysis(resolvedDirectory, config);
   const renderedOutput = renderCliOutput(output, config.format);
   const target = resolveOutputTarget(config.output);
 
@@ -67,6 +71,22 @@ export async function executeCli(
   }
 
   deps.writeStdout(renderedOutput);
+}
+
+async function assertDirectoryExists(directory: string, deps: Pick<CliDeps, "stat">): Promise<void> {
+  try {
+    const stats = await deps.stat(directory);
+
+    if (!stats.isDirectory()) {
+      throw new Error(`Input directory is not a directory: ${directory}`);
+    }
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new Error(`Input directory does not exist: ${directory}`);
+    }
+
+    throw error;
+  }
 }
 
 export function createProgram(): Command {

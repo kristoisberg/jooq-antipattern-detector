@@ -73,6 +73,10 @@ describe("executeCli", () => {
         mkdir: async (dir) => {
           calls.push({ type: "mkdir", path: dir });
         },
+        stat: async () =>
+          ({
+            isDirectory: () => true,
+          }) as Awaited<ReturnType<typeof import("node:fs/promises").stat>>,
         writeFile: async (filePath, contents) => {
           calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
         },
@@ -90,5 +94,36 @@ describe("executeCli", () => {
         payload: renderCliOutput(baseOutput, "text"),
       },
     ]);
+  });
+
+  test("throws a clear error when the input directory does not exist", async () => {
+    await expect(
+      executeCli("/tmp/missing-project", ["--anthropic-api-key", "test-key"], {
+        runAnalysis: async () => baseOutput,
+        mkdir: async () => undefined,
+        stat: async () => {
+          const error = new Error("missing");
+          Object.assign(error, { code: "ENOENT" });
+          throw error;
+        },
+        writeFile: async () => undefined,
+        writeStdout: () => undefined,
+      }),
+    ).rejects.toThrow("Input directory does not exist: /tmp/missing-project");
+  });
+
+  test("throws a clear error when the input path is not a directory", async () => {
+    await expect(
+      executeCli("/tmp/not-a-directory", ["--anthropic-api-key", "test-key"], {
+        runAnalysis: async () => baseOutput,
+        mkdir: async () => undefined,
+        stat: async () =>
+          ({
+            isDirectory: () => false,
+          }) as Awaited<ReturnType<typeof import("node:fs/promises").stat>>,
+        writeFile: async () => undefined,
+        writeStdout: () => undefined,
+      }),
+    ).rejects.toThrow("Input directory is not a directory: /tmp/not-a-directory");
   });
 });
