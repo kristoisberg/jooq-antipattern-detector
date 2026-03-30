@@ -4,13 +4,12 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, test } from "bun:test";
 
+import { getCliOverrides, registerCliOptions, resolveConfig } from "../config.js";
 import { Command } from "commander";
-
-import { registerCliOptions, resolveConfig } from "../config.js";
 
 describe("resolveConfig", () => {
   test("uses environment values when CLI args are absent", () => {
-    const config = resolveConfig([], {
+    const config = resolveConfig({}, {
       SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
       SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
       SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
@@ -28,14 +27,21 @@ describe("resolveConfig", () => {
     expect(config.retries).toBe(3);
     expect(config.thinkingEffort).toBe("high");
     expect(config.format).toBe("csv");
-    expect(config.output).toBe("reports/findings.json");
+    expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
     expect(config.debug).toBe(true);
     expect(config.apiKeys.openrouter).toBe("env-key");
   });
 
-  test("applies CLI args over environment values", () => {
+  test("applies CLI overrides over environment values", () => {
     const config = resolveConfig(
-      ["--concurrency", "7", "--thinking-effort", "xhigh", "--debug", "false", "--openai-api-key", "cli-key"],
+      {
+        concurrency: 7,
+        thinkingEffort: "xhigh",
+        debug: true,
+        apiKeys: {
+          openai: "cli-key",
+        },
+      },
       {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
         SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
@@ -46,12 +52,12 @@ describe("resolveConfig", () => {
 
     expect(config.concurrency).toBe(7);
     expect(config.thinkingEffort).toBe("xhigh");
-    expect(config.debug).toBe(false);
+    expect(config.debug).toBe(true);
     expect(config.apiKeys.openai).toBe("cli-key");
   });
 
   test("accepts newly supported thinking effort values from the environment", () => {
-    const config = resolveConfig([], {
+    const config = resolveConfig({}, {
       SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
     });
 
@@ -59,7 +65,7 @@ describe("resolveConfig", () => {
   });
 
   test("falls back to defaults when env and CLI are absent", () => {
-    const config = resolveConfig([], {});
+    const config = resolveConfig({}, {});
 
     expect(config.model).toBe("anthropic:claude-opus-4-5");
     expect(config.mode).toBe("localisation");
@@ -93,7 +99,7 @@ describe("resolveConfig", () => {
         "utf8",
       );
 
-      const config = resolveConfig(["--config-file", configFile], {});
+      const config = resolveConfig({ configFile }, {});
 
       expect(config.model).toBe("openai:gpt-4.1");
       expect(config.mode).toBe("classification");
@@ -101,7 +107,7 @@ describe("resolveConfig", () => {
       expect(config.retries).toBe(4);
       expect(config.thinkingEffort).toBe("medium");
       expect(config.format).toBe("json");
-      expect(config.output).toBe("reports/findings.json");
+      expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
       expect(config.debug).toBe(true);
       expect(config.apiKeys.openai).toBe("yaml-key");
     } finally {
@@ -120,8 +126,7 @@ describe("resolveConfig", () => {
         "utf8",
       );
 
-      const config = resolveConfig([], {
-        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: configFile,
+      const config = resolveConfig({ configFile }, {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "9",
         SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
         OPENAI_API_KEY: "env-key",
@@ -142,35 +147,40 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, ["concurrency: 3", "debug: false", ""].join("\n"), "utf8");
 
-      const config = resolveConfig(["--config-file", configFile, "--concurrency", "7", "--debug", "false"], {
+      const config = resolveConfig({ configFile, concurrency: 7, debug: true }, {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+        SQL_ANTIPATTERN_DETECTOR_DEBUG: "false",
       });
 
       expect(config.concurrency).toBe(7);
-      expect(config.debug).toBe(false);
+      expect(config.debug).toBe(true);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
   });
 
-  test("prefers the CLI config file location over the environment variable", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-config-"));
-    const cliConfigFile = path.join(directory, "cli.yml");
-    const envConfigFile = path.join(directory, "env.yml");
+  test("treats CLI booleans as flags", () => {
+    const config = resolveConfig({ debug: true }, {});
 
-    try {
-      writeFileSync(cliConfigFile, ["concurrency: 6", ""].join("\n"), "utf8");
-      writeFileSync(envConfigFile, ["concurrency: 2", ""].join("\n"), "utf8");
+    expect(config.debug).toBe(true);
+  });
 
-      const config = resolveConfig(["--config-file", cliConfigFile], {
-        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: envConfigFile,
-      });
+  test("ignores SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE when set", () => {
+    const config = resolveConfig(
+      {},
+      {
+        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: "/tmp/ignored-detector.yml",
+      },
+      {
+        existsSync: () => false,
+        readFileSync: () => {
+          throw new Error("readFileSync should not be called");
+        },
+        homedir: () => "/tmp/non-existent-home",
+      },
+    );
 
-      expect(config.concurrency).toBe(6);
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
+    expect(config.format).toBe("text");
   });
 
   test("uses the home-directory YAML config file when no location is provided", () => {
@@ -181,7 +191,7 @@ describe("resolveConfig", () => {
       writeFileSync(configFile, ["format: csv", ""].join("\n"), "utf8");
 
       const config = resolveConfig(
-        [],
+        {},
         {},
         {
           existsSync: (filePath) => filePath === configFile,
@@ -218,28 +228,46 @@ describe("resolveConfig", () => {
   });
 
   test("rejects an empty model value", () => {
-    expect(() => resolveConfig(["--model", ""], {})).toThrow("must be a non-empty string");
+    expect(() => resolveConfig({ model: "" }, {})).toThrow("Invalid configuration: must be a non-empty string");
   });
 
   test("rejects an invalid mode value", () => {
-    expect(() => resolveConfig(["--mode", "invalid"], {})).toThrow();
+    expect(() => resolveConfig({ mode: "invalid" as never }, {})).toThrow();
   });
 
   test("rejects invalid positive integer values", () => {
-    expect(() => resolveConfig(["--concurrency", "0"], {})).toThrow("must be a positive integer");
+    expect(() => resolveConfig({ concurrency: 0 }, {})).toThrow("Invalid configuration: must be a positive integer");
+  });
+
+  test("maps commander options into CLI overrides", () => {
+    const overrides = getCliOverrides({
+      concurrency: 7,
+      thinkingEffort: "xhigh",
+      debug: true,
+      configFile: "/tmp/detector.yml",
+      openaiApiKey: "cli-key",
+    });
+
+    expect(overrides).toEqual({
+      concurrency: 7,
+      thinkingEffort: "xhigh",
+      debug: true,
+      configFile: "/tmp/detector.yml",
+      apiKeys: {
+        openai: "cli-key",
+      },
+    });
   });
 
   test("throws when an explicitly configured config file does not exist", () => {
     expect(() =>
-      resolveConfig([], {
-        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: "/tmp/missing-config.yml",
-      }),
+      resolveConfig({ configFile: "/tmp/missing-config.yml" }, {}),
     ).toThrow("Config file does not exist: /tmp/missing-config.yml");
   });
 
   test("ignores the default home config file when it does not exist", () => {
     const config = resolveConfig(
-      [],
+      {},
       {},
       {
         existsSync: () => false,
@@ -260,7 +288,7 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, "format: [\n", "utf8");
 
-      expect(() => resolveConfig(["--config-file", configFile], {})).toThrow(
+      expect(() => resolveConfig({ configFile }, {})).toThrow(
         `Failed to parse YAML config file at ${configFile}:`,
       );
     } finally {

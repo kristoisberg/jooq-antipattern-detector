@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV1 } from "ai";
 
-import { createModel, type ModelDeps } from "../model.js";
+import { createModel, parseModelIdentifier, type ModelDeps } from "../model.js";
 import type { ProviderDefinition } from "../providers.js";
 
 function createStubDeps(): { deps: ModelDeps; calls: Array<{ provider: string; modelId: string; apiKey: string }> } {
@@ -114,6 +114,27 @@ describe("createModel", () => {
   test("fails with a provider-specific API key error", () => {
     expect(() => createModel("openrouter:openai/gpt-4.1", {})).toThrow(
       "Missing API key for openrouter. Provide --openrouter-api-key or set OPENROUTER_API_KEY.",
+    );
+  });
+});
+
+describe("parseModelIdentifier", () => {
+  test("extracts provider and provider-scoped model id", () => {
+    expect(parseModelIdentifier("openrouter:openai/gpt-4.1")).toEqual({
+      providerId: "openrouter",
+      modelId: "openai/gpt-4.1",
+    });
+  });
+
+  test("rejects missing provider prefix", () => {
+    expect(() => parseModelIdentifier("gpt-4.1")).toThrow(
+      'Model identifier must use an explicit provider prefix, for example "google:gemini-2.5-pro".',
+    );
+  });
+
+  test("rejects empty provider-scoped model ids", () => {
+    expect(() => parseModelIdentifier("openai:   ")).toThrow(
+      'Provider prefix "openai" must be followed by a model identifier.',
     );
   });
 });

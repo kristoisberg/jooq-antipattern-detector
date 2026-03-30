@@ -2,7 +2,8 @@ import type { LanguageModelV1 } from "ai";
 
 import { PROVIDERS_BY_ID, type ModelApiKeys, type ProviderDefinition, type ProviderId } from "./providers.js";
 
-type ResolvedProvider = {
+export type ResolvedProvider = {
+  providerId: ProviderId;
   definition: ProviderDefinition;
   modelId: string;
 };
@@ -20,7 +21,7 @@ export function createModel(
   apiKeys: ModelApiKeys,
   deps: ModelDeps = defaultModelDeps,
 ): LanguageModelV1 {
-  const resolved = resolveProvider(modelId, deps.providers);
+  const resolved = resolveProviderModel(modelId, deps.providers);
   const apiKey = apiKeys[resolved.definition.apiKeyField];
 
   if (!apiKey) {
@@ -32,8 +33,9 @@ export function createModel(
   return resolved.definition.create(resolved.modelId, apiKey);
 }
 
-function resolveProvider(modelId: string, providers: ModelDeps["providers"]): ResolvedProvider {
+export function parseModelIdentifier(modelId: string): { providerId: ProviderId; modelId: string } {
   const normalizedModelId = modelId.trim();
+
   if (!normalizedModelId) {
     throw new Error("Model identifier must be a non-empty string.");
   }
@@ -46,18 +48,29 @@ function resolveProvider(modelId: string, providers: ModelDeps["providers"]): Re
   const providerId = normalizedModelId.slice(0, separatorIndex).trim() as ProviderId;
   const providerModelId = normalizedModelId.slice(separatorIndex + 1).trim();
 
-  if (!(providerId in providers)) {
-    throw new Error(
-      `Unsupported provider prefix "${normalizedModelId.slice(0, separatorIndex)}". Use "google:", "anthropic:", "openai:", or "openrouter:".`,
-    );
-  }
-
   if (!providerModelId) {
     throw new Error(`Provider prefix "${providerId}" must be followed by a model identifier.`);
   }
 
   return {
-    definition: providers[providerId],
+    providerId,
     modelId: providerModelId,
+  };
+}
+
+export function resolveProviderModel(modelId: string, providers: ModelDeps["providers"]): ResolvedProvider {
+  const parsed = parseModelIdentifier(modelId);
+  const providerPrefix = modelId.trim().slice(0, modelId.trim().indexOf(":"));
+
+  if (!(parsed.providerId in providers)) {
+    throw new Error(
+      `Unsupported provider prefix "${providerPrefix}". Use "google:", "anthropic:", "openai:", or "openrouter:".`,
+    );
+  }
+
+  return {
+    providerId: parsed.providerId,
+    definition: providers[parsed.providerId],
+    modelId: parsed.modelId,
   };
 }

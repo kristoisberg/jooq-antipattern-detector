@@ -82,22 +82,9 @@ export type DiscoveryResult = {
 
 export async function discoverApplicableFiles(rootDir: string): Promise<DiscoveryResult> {
   const files = await loadJavaFiles(rootDir);
-  const keysFiles = files.filter((file) => file.contents.includes("public class Keys "));
-
-  const candidates = files.filter(isApplicableFile).map((file) => {
-    const closestKeysFile = findClosestKeysFile(file, keysFiles);
-    const promptType: FileCandidate["promptType"] = ddlIndicatorPhrases.some((phrase) => file.contents.includes(phrase))
-      ? "ddl"
-      : "dml-dql";
-
-    return {
-      absolutePath: file.absolutePath,
-      relativePath: file.relativePath,
-      contents: file.contents,
-      promptType,
-      closestKeysContents: closestKeysFile?.contents ?? "",
-    };
-  });
+  const keysFiles = collectKeysFiles(files);
+  const applicableFiles = files.filter(isApplicableFile);
+  const candidates = applicableFiles.map((file) => createFileCandidate(file, keysFiles));
 
   return {
     allJavaFiles: files.map((file) => file.absolutePath),
@@ -127,19 +114,51 @@ async function loadJavaFiles(rootDir: string): Promise<LoadedJavaFile[]> {
 }
 
 function isApplicableFile(file: LoadedJavaFile): boolean {
-  if (excludedPathFragments.some((fragment) => file.relativePath.includes(fragment))) {
+  if (isExcludedByPath(file)) {
     return false;
   }
 
-  if (!includedPhrases.some((phrase) => file.contents.includes(phrase))) {
+  if (!hasIncludedPhrase(file)) {
     return false;
   }
 
-  if (excludedPhrases.some((phrase) => file.contents.includes(phrase))) {
+  if (hasExcludedPhrase(file)) {
     return false;
   }
 
   return true;
+}
+
+function collectKeysFiles(files: LoadedJavaFile[]): LoadedJavaFile[] {
+  return files.filter((file) => file.contents.includes("public class Keys "));
+}
+
+function createFileCandidate(file: LoadedJavaFile, keysFiles: LoadedJavaFile[]): FileCandidate {
+  const closestKeysFile = findClosestKeysFile(file, keysFiles);
+
+  return {
+    absolutePath: file.absolutePath,
+    relativePath: file.relativePath,
+    contents: file.contents,
+    promptType: detectPromptType(file),
+    closestKeysContents: closestKeysFile?.contents ?? "",
+  };
+}
+
+function isExcludedByPath(file: LoadedJavaFile): boolean {
+  return excludedPathFragments.some((fragment) => file.relativePath.includes(fragment));
+}
+
+function hasIncludedPhrase(file: LoadedJavaFile): boolean {
+  return includedPhrases.some((phrase) => file.contents.includes(phrase));
+}
+
+function hasExcludedPhrase(file: LoadedJavaFile): boolean {
+  return excludedPhrases.some((phrase) => file.contents.includes(phrase));
+}
+
+function detectPromptType(file: LoadedJavaFile): FileCandidate["promptType"] {
+  return ddlIndicatorPhrases.some((phrase) => file.contents.includes(phrase)) ? "ddl" : "dml-dql";
 }
 
 function findClosestKeysFile(file: LoadedJavaFile, keysFiles: LoadedJavaFile[]): LoadedJavaFile | undefined {

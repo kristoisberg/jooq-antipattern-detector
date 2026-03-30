@@ -60,33 +60,11 @@ export function renderTextReport(output: CliOutput): string {
   if (findings.length > 0) {
     lines.push("");
     lines.push(style.bold(style.yellow(output.mode === "classification" ? "Classifications" : "Findings")));
-
-    for (const result of findings) {
-      lines.push("");
-
-      if ("occurrences" in result) {
-        lines.push(renderFileDivider());
-        lines.push(renderResultHeader(result));
-
-        for (const [index, occurrence] of result.occurrences.entries()) {
-          lines.push(
-            `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
-              `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
-            )}`,
-          );
-          lines.push(...renderDetailBlock("Code", occurrence.codeFragment));
-          lines.push(...renderDetailBlock("Explanation", occurrence.explanation));
-
-          if (index < result.occurrences.length - 1) {
-            lines.push("");
-          }
-        }
-
-        continue;
-      }
-
-      lines.push(...renderClassificationResult(result));
-    }
+    lines.push(
+      ...(output.mode === "classification"
+        ? renderClassificationTextResults(findings)
+        : renderLocalisationTextResults(findings)),
+    );
   }
 
   if (failures.length > 0) {
@@ -106,22 +84,75 @@ export function renderTextReport(output: CliOutput): string {
 
 function renderCsvReport(output: CliOutput): string {
   const projectName = path.basename(output.rootDirectory);
-  if (output.mode === "classification") {
-    const rows = [
-      ["Project", "Antipattern", "File"],
-      ...output.results.flatMap((result) =>
-        result.error || !("antipatterns" in result)
-          ? []
-          : result.antipatterns.map((antipattern) => [projectName, antipattern, result.relativePath]),
-      ),
-    ];
 
-    return rows.map((row) => row.map(escapeCsvField).join(",")).join("\n");
+  return (output.mode === "classification"
+    ? renderClassificationCsvReport(output.results, projectName)
+    : renderLocalisationCsvReport(output.results, projectName)
+  )
+    .map((row) => row.map(escapeCsvField).join(","))
+    .join("\n");
+}
+
+function renderLocalisationTextResults(results: FileAnalysis[]): string[] {
+  const lines: string[] = [];
+
+  for (const result of results) {
+    if (!("occurrences" in result)) {
+      continue;
+    }
+
+    lines.push("");
+    lines.push(renderFileDivider());
+    lines.push(renderResultHeader(result));
+
+    for (const [index, occurrence] of result.occurrences.entries()) {
+      lines.push(
+        `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
+          `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
+        )}`,
+      );
+      lines.push(...renderDetailBlock("Code", occurrence.codeFragment));
+      lines.push(...renderDetailBlock("Explanation", occurrence.explanation));
+
+      if (index < result.occurrences.length - 1) {
+        lines.push("");
+      }
+    }
   }
 
-  const rows = [
+  return lines;
+}
+
+function renderClassificationTextResults(results: FileAnalysis[]): string[] {
+  const lines: string[] = [];
+
+  for (const result of results) {
+    if (!("antipatterns" in result)) {
+      continue;
+    }
+
+    lines.push("");
+    lines.push(...renderClassificationResult(result));
+  }
+
+  return lines;
+}
+
+function renderClassificationCsvReport(results: FileAnalysis[], projectName: string): string[][] {
+  return [
+    ["Project", "Antipattern", "File"],
+    ...results.flatMap((result) =>
+      result.error || !("antipatterns" in result)
+        ? []
+        : result.antipatterns.map((antipattern) => [projectName, antipattern, result.relativePath]),
+    ),
+  ];
+}
+
+function renderLocalisationCsvReport(results: FileAnalysis[], projectName: string): string[][] {
+  return [
     ["Project", "Antipattern", "File", "Line from", "Line to", "Explanation"],
-    ...output.results.flatMap((result) =>
+    ...results.flatMap((result) =>
       result.error || !("occurrences" in result)
         ? []
         : result.occurrences.map((occurrence) => [
@@ -134,8 +165,6 @@ function renderCsvReport(output: CliOutput): string {
           ]),
     ),
   ];
-
-  return rows.map((row) => row.map(escapeCsvField).join(",")).join("\n");
 }
 
 function renderResultHeader(result: FileAnalysis): string {

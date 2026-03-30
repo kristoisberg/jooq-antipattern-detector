@@ -86,7 +86,6 @@ CLI parameter -> environment variable -> YAML config file -> default
 Configuration file lookup:
 
 - explicit path from `--config-file <file>`
-- otherwise `SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE`
 - otherwise `~/.sql-antipattern-detector.yml` if it exists
 
 Example YAML config:
@@ -106,7 +105,6 @@ apiKeys:
 
 Environment variables:
 
-- `SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE`
 - `SQL_ANTIPATTERN_DETECTOR_MODEL`
 - `SQL_ANTIPATTERN_DETECTOR_MODE`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
@@ -123,7 +121,6 @@ Environment variables:
 Examples:
 
 ```bash
-SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE=./detector.yml bun run src/cli.ts ./path/to/project
 SQL_ANTIPATTERN_DETECTOR_FORMAT=json SQL_ANTIPATTERN_DETECTOR_OUTPUT=reports/findings.json bun run src/cli.ts ./path/to/project
 ANTHROPIC_API_KEY=... bun run src/cli.ts ./path/to/project --model anthropic:claude-opus-4-5
 OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:openai/gpt-4.1

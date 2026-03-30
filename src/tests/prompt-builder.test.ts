@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildPrompt } from "../prompt-builder.js";
+import { buildPrompt, formatKeysContents, formatSourceWithLineNumbers } from "../prompt-builder.js";
 import type { FileCandidate } from "../file-discovery.js";
 import type { PromptSet } from "../prompts.js";
 
@@ -40,5 +40,13 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("DML");
     expect(prompt).not.toContain("DDL");
     expect(prompt).toContain("1: query()");
+  });
+
+  test("formats numbered source lines independently", () => {
+    expect(formatSourceWithLineNumbers("  first line  \n\tsecond line\t")).toBe("1: first line\n2: second line");
+  });
+
+  test("formats keys contents independently", () => {
+    expect(formatKeysContents("  key one  \n\tkey two\t")).toBe("key one\nkey two");
   });
 });

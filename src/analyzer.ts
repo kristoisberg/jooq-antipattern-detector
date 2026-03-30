@@ -4,7 +4,7 @@ import type { LanguageModelV1 } from "ai";
 
 import type { AppConfig } from "./config.js";
 import type { FileCandidate } from "./file-discovery.js";
-import { createModel } from "./model.js";
+import { createModel, parseModelIdentifier } from "./model.js";
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
 import {
@@ -84,6 +84,7 @@ export async function analyzeFiles(
   deps: AnalyzerDeps = defaultAnalyzerDeps,
 ): Promise<{ analyses: FileAnalysis[]; summary: RunSummary }> {
   const model = deps.createModel(options.model, options.apiKeys);
+  const providerId = parseModelIdentifier(options.model).providerId;
   const limit = pLimit(Math.max(1, options.concurrency));
 
   const analyses = await Promise.all(
@@ -91,7 +92,7 @@ export async function analyzeFiles(
       limit(async () => {
         const prompt = buildPrompt(candidate, prompts);
 
-        return analyzeWithRetry(model, candidate, prompt, options, deps).catch((error) =>
+        return analyzeWithRetry(model, providerId, candidate, prompt, options, deps).catch((error) =>
           buildFailedAnalysis(candidate, error, options.mode),
         );
       }),
@@ -99,42 +100,12 @@ export async function analyzeFiles(
   );
 
   analyses.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+  const summary = createEmptySummary(candidates.length);
   const distinctAntipatterns = new Set<string>();
 
-  const summary = analyses.reduce<RunSummary>(
-    (acc, analysis) => {
-      if (analysis.error) {
-        acc.failedFiles += 1;
-      } else {
-        acc.analyzedFiles += 1;
-        for (const antipattern of getAnalysisAntipatterns(analysis)) {
-          distinctAntipatterns.add(antipattern);
-        }
-      }
-      const findingCount = getAnalysisFindingCount(analysis);
-
-      if (findingCount > 0) {
-        acc.filesWithFindings += 1;
-      }
-      acc.totalOccurrences += findingCount;
-      acc.inputTokens += analysis.usage?.inputTokens ?? 0;
-      acc.outputTokens += analysis.usage?.outputTokens ?? 0;
-      acc.totalTokens += analysis.usage?.totalTokens ?? 0;
-      return acc;
-    },
-    {
-      scannedJavaFiles: 0,
-      applicableFiles: candidates.length,
-      analyzedFiles: 0,
-      failedFiles: 0,
-      filesWithFindings: 0,
-      totalOccurrences: 0,
-      distinctAntipatterns: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-    },
-  );
+  for (const analysis of analyses) {
+    accumulateAnalysis(summary, distinctAntipatterns, analysis);
+  }
 
   summary.distinctAntipatterns = distinctAntipatterns.size;
 
@@ -163,6 +134,7 @@ function buildFailedAnalysis(candidate: FileCandidate, error: unknown, mode: App
 
 async function analyzeWithRetry(
   model: ReturnType<AnalyzerDeps["createModel"]>,
+  providerId: string,
   candidate: FileCandidate,
   prompt: string,
   options: AnalyzeOptions,
@@ -175,7 +147,7 @@ async function analyzeWithRetry(
       const result = await deps.generateAnalysisObject(
         model,
         prompt,
-        getProviderId(options.model),
+        providerId,
         options.mode,
         options.thinkingEffort,
       );
@@ -241,6 +213,44 @@ function dedupeAntipatterns(antipatterns: ClassificationAnalysisResponse["antipa
   return [...new Set(antipatterns)];
 }
 
+function createEmptySummary(applicableFiles: number): RunSummary {
+  return {
+    scannedJavaFiles: 0,
+    applicableFiles,
+    analyzedFiles: 0,
+    failedFiles: 0,
+    filesWithFindings: 0,
+    totalOccurrences: 0,
+    distinctAntipatterns: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
+}
+
+function accumulateAnalysis(summary: RunSummary, distinctAntipatterns: Set<string>, analysis: FileAnalysis): void {
+  if (analysis.error) {
+    summary.failedFiles += 1;
+  } else {
+    summary.analyzedFiles += 1;
+
+    for (const antipattern of getAnalysisAntipatterns(analysis)) {
+      distinctAntipatterns.add(antipattern);
+    }
+  }
+
+  const findingCount = getAnalysisFindingCount(analysis);
+
+  if (findingCount > 0) {
+    summary.filesWithFindings += 1;
+  }
+
+  summary.totalOccurrences += findingCount;
+  summary.inputTokens += analysis.usage?.inputTokens ?? 0;
+  summary.outputTokens += analysis.usage?.outputTokens ?? 0;
+  summary.totalTokens += analysis.usage?.totalTokens ?? 0;
+}
+
 function getAnalysisFindingCount(analysis: FileAnalysis): number {
   return "occurrences" in analysis ? analysis.occurrences.length : analysis.antipatterns.length;
 }
@@ -253,11 +263,6 @@ function getAnalysisAntipatterns(analysis: FileAnalysis): string[] {
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function getProviderId(modelId: string): string {
-  const separatorIndex = modelId.indexOf(":");
-  return separatorIndex === -1 ? "" : modelId.slice(0, separatorIndex).trim();
 }
 
 function supportsThinkingEffort(providerId: string): boolean {

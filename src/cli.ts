@@ -6,7 +6,7 @@ import path from "node:path";
 import { Command } from "commander";
 
 import { runAnalysis } from "./app.js";
-import { registerCliOptions, resolveConfig } from "./config.js";
+import { getCliOverrides, registerCliOptions, resolveConfig, type CliOverrides } from "./config.js";
 import { renderOutput } from "./output.js";
 
 type CliDeps = {
@@ -32,41 +32,24 @@ export function renderCliOutput(
   return `${renderOutput(output, format)}\n`;
 }
 
-export function resolveOutputTarget(
-  outputPath?: string,
-): { type: "stdout" } | { type: "file"; path: string; dir: string } {
-  if (!outputPath) {
-    return { type: "stdout" };
-  }
-
-  const resolvedPath = path.resolve(outputPath);
-
-  return {
-    type: "file",
-    path: resolvedPath,
-    dir: path.dirname(resolvedPath),
-  };
-}
-
 function writeStdout(message: string): void {
   process.stdout.write(message);
 }
 
 export async function executeCli(
   directory: string,
-  args: string[] = process.argv.slice(2),
+  cliOverrides: CliOverrides = {},
   deps: CliDeps = defaultCliDeps,
 ): Promise<void> {
   const resolvedDirectory = path.resolve(directory);
   await assertDirectoryExists(resolvedDirectory, deps);
-  const config = resolveConfig(args);
+  const config = resolveConfig(cliOverrides);
   const output = await deps.runAnalysis(resolvedDirectory, config);
   const renderedOutput = renderCliOutput(output, config.format);
-  const target = resolveOutputTarget(config.output);
 
-  if (target.type === "file") {
-    await deps.mkdir(target.dir, { recursive: true });
-    await deps.writeFile(target.path, renderedOutput, "utf8");
+  if (config.output) {
+    await deps.mkdir(path.dirname(config.output), { recursive: true });
+    await deps.writeFile(config.output, renderedOutput, "utf8");
     return;
   }
 
@@ -99,8 +82,8 @@ export function createProgram(): Command {
 
   registerCliOptions(program);
 
-  program.action(async (directory: string) => {
-    await executeCli(directory);
+  program.action(async (directory: string, _options: unknown, command: Command) => {
+    await executeCli(directory, getCliOverrides(command.opts()));
   });
 
   return program;

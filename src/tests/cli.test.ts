@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import type { Stats } from "node:fs";
 
-import { createProgram, executeCli, renderCliOutput, resolveOutputTarget } from "../cli.js";
+import { createProgram, executeCli, renderCliOutput } from "../cli.js";
 import type { CliOutput } from "../output.js";
 
 const directoryStats = {
@@ -39,20 +39,6 @@ describe("renderCliOutput", () => {
   });
 });
 
-describe("resolveOutputTarget", () => {
-  test("selects stdout when no output path is configured", () => {
-    expect(resolveOutputTarget()).toEqual({ type: "stdout" });
-  });
-
-  test("resolves file output paths", () => {
-    expect(resolveOutputTarget("reports/findings.txt")).toEqual({
-      type: "file",
-      path: `${process.cwd()}/reports/findings.txt`,
-      dir: `${process.cwd()}/reports`,
-    });
-  });
-});
-
 describe("createProgram", () => {
   test("creates the configured command program", () => {
     const program = createProgram();
@@ -76,7 +62,7 @@ describe("executeCli", () => {
   test("creates the parent directory automatically when --output is used", async () => {
     const calls: Array<{ type: "mkdir" | "writeFile"; path: string; payload?: string }> = [];
 
-    await executeCli("/tmp/project", ["--output", "reports/findings.json", "--anthropic-api-key", "test-key"], {
+    await executeCli("/tmp/project", { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } }, {
       runAnalysis: async () => baseOutput,
       mkdir: async (dir) => {
         calls.push({ type: "mkdir", path: dir.toString() });
@@ -102,7 +88,7 @@ describe("executeCli", () => {
 
   test("throws a clear error when the input directory does not exist", async () => {
     await expect(
-      executeCli("/tmp/missing-project", ["--anthropic-api-key", "test-key"], {
+      executeCli("/tmp/missing-project", { apiKeys: { anthropic: "test-key" } }, {
         runAnalysis: async () => baseOutput,
         mkdir: async () => undefined,
         stat: async () => {
@@ -118,7 +104,7 @@ describe("executeCli", () => {
 
   test("throws a clear error when the input path is not a directory", async () => {
     await expect(
-      executeCli("/tmp/not-a-directory", ["--anthropic-api-key", "test-key"], {
+      executeCli("/tmp/not-a-directory", { apiKeys: { anthropic: "test-key" } }, {
         runAnalysis: async () => baseOutput,
         mkdir: async () => undefined,
         stat: async (): Promise<Stats> => fileStats,
@@ -126,5 +112,33 @@ describe("executeCli", () => {
         writeStdout: () => undefined,
       }),
     ).rejects.toThrow("Input directory is not a directory: /tmp/not-a-directory");
+  });
+
+  test("config normalization resolves output paths before CLI writes files", async () => {
+    let capturedOutputPath: string | undefined;
+
+    await executeCli("/tmp/project", { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } }, {
+      runAnalysis: async (_directory, config) => {
+        capturedOutputPath = config.output;
+        return baseOutput;
+      },
+      mkdir: async () => undefined,
+      stat: async (): Promise<Stats> => directoryStats,
+      writeFile: async () => undefined,
+      writeStdout: () => undefined,
+    });
+
+    expect(capturedOutputPath).toBe(`${process.cwd()}/reports/findings.json`);
+  });
+
+  test("commander rejects boolean values for --debug on the actual CLI path", async () => {
+    const program = createProgram();
+    program.exitOverride();
+
+    await expect(program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug=false"], { from: "node" }))
+      .rejects.toThrow("unknown option '--debug=false'");
+
+    await expect(program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug", "false"], { from: "node" }))
+      .rejects.toThrow("too many arguments");
   });
 });
