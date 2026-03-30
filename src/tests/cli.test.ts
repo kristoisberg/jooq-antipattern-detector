@@ -16,6 +16,7 @@ const fileStats = {
 const baseOutput: CliOutput = {
   rootDirectory: "/tmp/project",
   model: "google:gemini-2.5-pro",
+  mode: "localisation",
   generatedAt: "2025-01-01T00:00:00.000Z",
   results: [],
   summary: {
@@ -75,23 +76,19 @@ describe("executeCli", () => {
   test("creates the parent directory automatically when --output is used", async () => {
     const calls: Array<{ type: "mkdir" | "writeFile"; path: string; payload?: string }> = [];
 
-    await executeCli(
-      "/tmp/project",
-      ["--output", "reports/findings.json", "--anthropic-api-key", "test-key"],
-      {
-        runAnalysis: async () => baseOutput,
-        mkdir: async (dir) => {
-          calls.push({ type: "mkdir", path: dir.toString() });
-        },
-        stat: async (): Promise<Stats> => directoryStats,
-        writeFile: async (filePath, contents) => {
-          calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
-        },
-        writeStdout: () => {
-          throw new Error("stdout should not be used when output file is configured");
-        },
+    await executeCli("/tmp/project", ["--output", "reports/findings.json", "--anthropic-api-key", "test-key"], {
+      runAnalysis: async () => baseOutput,
+      mkdir: async (dir) => {
+        calls.push({ type: "mkdir", path: dir.toString() });
       },
-    );
+      stat: async (): Promise<Stats> => directoryStats,
+      writeFile: async (filePath, contents) => {
+        calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
+      },
+      writeStdout: () => {
+        throw new Error("stdout should not be used when output file is configured");
+      },
+    });
 
     expect(calls).toEqual([
       { type: "mkdir", path: `${process.cwd()}/reports` },

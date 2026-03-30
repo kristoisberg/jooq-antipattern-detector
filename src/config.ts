@@ -9,9 +9,11 @@ import { PROVIDER_DEFINITIONS, type ModelApiKeys } from "./providers.js";
 
 export type OutputFormat = "text" | "json" | "csv";
 export type ThinkingEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type AnalysisMode = "localisation" | "classification";
 
 export type AppConfig = {
   model: string;
+  mode: AnalysisMode;
   concurrency: number;
   retries: number;
   thinkingEffort: ThinkingEffort;
@@ -75,6 +77,18 @@ const OPTION_DEFINITIONS = {
       default: "anthropic:claude-opus-4-5",
       env: "SQL_ANTIPATTERN_DETECTOR_MODEL",
       arg: "model",
+    },
+  },
+  mode: {
+    flags: "--mode <mode>",
+    description:
+      'Analysis mode: "localisation" for occurrence-level findings or "classification" for distinct antipattern types per file',
+    schema: {
+      doc: 'Analysis mode: "localisation" for occurrence-level findings or "classification" for distinct antipattern types per file',
+      format: ["localisation", "classification"] as AnalysisMode[],
+      default: "localisation" as AnalysisMode,
+      env: "SQL_ANTIPATTERN_DETECTOR_MODE",
+      arg: "mode",
     },
   },
   concurrency: {
@@ -174,6 +188,7 @@ const apiKeyConfigSchema = Object.fromEntries(
 
 const configSchema: convict.Schema<ConfigProperties> = {
   model: OPTION_DEFINITIONS.model.schema,
+  mode: OPTION_DEFINITIONS.mode.schema,
   concurrency: OPTION_DEFINITIONS.concurrency.schema,
   retries: OPTION_DEFINITIONS.retries.schema,
   thinkingEffort: OPTION_DEFINITIONS.thinkingEffort.schema,
@@ -231,6 +246,7 @@ export function resolveConfig(
 function normalizeConfig(properties: ConfigProperties): AppConfig {
   return {
     model: properties.model,
+    mode: properties.mode,
     concurrency: properties.concurrency,
     retries: properties.retries,
     thinkingEffort: properties.thinkingEffort,
@@ -530,7 +546,7 @@ function parseBoolean(value: string): boolean {
     return false;
   }
 
-  throw new Error(`must be one of: true, false`);
+  throw new Error("must be one of: true, false");
 }
 
 function setConfigProperty<Key extends keyof ConfigProperties>(

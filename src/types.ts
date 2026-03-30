@@ -10,6 +10,8 @@ export const antipatternNameSchema = z.enum([
   "Beware of the Unknown",
 ]);
 
+export type AntipatternName = z.infer<typeof antipatternNameSchema>;
+
 export const antipatternOccurrenceSchema = z.object({
   antipatternName: antipatternNameSchema,
   linesRangeStart: z.number().int().positive(),
@@ -18,26 +20,40 @@ export const antipatternOccurrenceSchema = z.object({
   explanation: z.string(),
 });
 
-export const analysisResponseSchema = z.object({
+export const localisationAnalysisResponseSchema = z.object({
   occurrences: z.array(antipatternOccurrenceSchema),
 });
 
+export const classificationAnalysisResponseSchema = z.object({
+  antipatterns: z.array(antipatternNameSchema),
+});
+
 export type AntipatternOccurrence = z.infer<typeof antipatternOccurrenceSchema>;
-export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
+export type LocalisationAnalysisResponse = z.infer<typeof localisationAnalysisResponseSchema>;
+export type ClassificationAnalysisResponse = z.infer<typeof classificationAnalysisResponseSchema>;
 export type AnalysisUsage = {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
 };
 
-export type FileAnalysis = {
+type FileAnalysisBase = {
   filePath: string;
   relativePath: string;
   promptType: "ddl" | "dml-dql";
-  occurrences: AntipatternOccurrence[];
   error?: string;
   usage?: AnalysisUsage;
 };
+
+export type LocalisationFileAnalysis = FileAnalysisBase & {
+  occurrences: AntipatternOccurrence[];
+};
+
+export type ClassificationFileAnalysis = FileAnalysisBase & {
+  antipatterns: AntipatternName[];
+};
+
+export type FileAnalysis = LocalisationFileAnalysis | ClassificationFileAnalysis;
 
 export type RunSummary = {
   scannedJavaFiles: number;

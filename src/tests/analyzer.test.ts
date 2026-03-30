@@ -29,6 +29,7 @@ const candidates: FileCandidate[] = [
 
 const options: AnalyzeOptions = {
   model: "google:gemini-2.5-pro",
+  mode: "localisation",
   concurrency: 2,
   retries: 2,
   thinkingEffort: "medium",
@@ -46,9 +47,10 @@ describe("analyzeFiles", () => {
 
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, prompt, providerId, thinkingEffort) => {
+      generateAnalysisObject: async (_model, prompt, providerId, mode, thinkingEffort) => {
         promptsSeen.push(prompt);
         expect(providerId).toBe("google");
+        expect(mode).toBe("localisation");
         expect(thinkingEffort).toBe("medium");
         const currentAttempt = (attempts.get(prompt) ?? 0) + 1;
         attempts.set(prompt, currentAttempt);
@@ -66,7 +68,8 @@ describe("analyzeFiles", () => {
                   linesRangeStart: 2,
                   linesRangeEnd: 4,
                   codeFragment: "id",
-                  explanation: "This uses a generic surrogate key. Rename it to a domain-specific key or use the existing natural key.",
+                  explanation:
+                    "This uses a generic surrogate key. Rename it to a domain-specific key or use the existing natural key.",
                 },
               ],
             },
@@ -119,8 +122,9 @@ describe("analyzeFiles", () => {
   test("converts exhausted retries into file analysis errors", async () => {
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, _prompt, providerId, thinkingEffort) => {
+      generateAnalysisObject: async (_model, _prompt, providerId, mode, thinkingEffort) => {
         expect(providerId).toBe("google");
+        expect(mode).toBe("localisation");
         expect(thinkingEffort).toBe("medium");
         throw new Error("always failing");
       },
@@ -150,7 +154,8 @@ describe("analyzeFiles", () => {
 
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async () => {
+      generateAnalysisObject: async (_model, _prompt, _providerId, mode) => {
+        expect(mode).toBe("localisation");
         attempts += 1;
 
         if (attempts === 1) {
@@ -214,5 +219,80 @@ describe("analyzeFiles", () => {
     ]);
     expect(debugMessages.some((message) => message.startsWith("[retry] b.java failed on attempt 1: ["))).toBe(true);
     expect(debugMessages).toContain("[analyzed] b.java (dml-dql, attempt 2)\n");
+  });
+
+  test("supports classification mode with distinct antipatterns per file", async () => {
+    const deps: AnalyzerDeps = {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async (_model, prompt, providerId, mode, thinkingEffort) => {
+        expect(providerId).toBe("google");
+        expect(mode).toBe("classification");
+        expect(thinkingEffort).toBe("medium");
+
+        if (prompt.includes("1: a")) {
+          return {
+            object: {
+              antipatterns: ["ID Required", "31 Flavors", "ID Required"],
+            },
+            usage: {
+              promptTokens: 3,
+              completionTokens: 2,
+              totalTokens: 5,
+            },
+          };
+        }
+
+        return {
+          object: {
+            antipatterns: ["Beware of the Unknown"],
+          },
+          usage: {
+            promptTokens: 5,
+            completionTokens: 1,
+            totalTokens: 6,
+          },
+        };
+      },
+      writeDebug: () => {},
+    };
+
+    const result = await analyzeFiles(candidates, prompts, { ...options, mode: "classification", debug: false }, deps);
+
+    expect(result.analyses).toEqual([
+      {
+        filePath: "/tmp/project/a.java",
+        relativePath: "a.java",
+        promptType: "ddl",
+        antipatterns: ["ID Required", "31 Flavors"],
+        usage: {
+          inputTokens: 3,
+          outputTokens: 2,
+          totalTokens: 5,
+        },
+      },
+      {
+        filePath: "/tmp/project/b.java",
+        relativePath: "b.java",
+        promptType: "dml-dql",
+        antipatterns: ["Beware of the Unknown"],
+        usage: {
+          inputTokens: 5,
+          outputTokens: 1,
+          totalTokens: 6,
+        },
+      },
+    ]);
+    expect(result.summary).toEqual({
+      scannedJavaFiles: 0,
+      applicableFiles: 2,
+      analyzedFiles: 2,
+      failedFiles: 0,
+      filesWithFindings: 2,
+      totalOccurrences: 3,
+      distinctAntipatterns: 3,
+      inputTokens: 8,
+      outputTokens: 3,
+      totalTokens: 11,
+    });
   });
 });

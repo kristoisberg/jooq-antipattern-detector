@@ -9,6 +9,7 @@ LLM-backed command line tool for detecting SQL antipatterns in Java projects tha
 - Classifies each candidate as DDL-style or DML/DQL-style analysis.
 - Finds the closest generated `Keys` class and injects it into the prompt when available.
 - Uses an AI SDK model with structured output validation to report antipattern occurrences.
+- Supports `localisation` mode for occurrence-level findings and `classification` mode for per-file antipattern classification.
 - Produces text, JSON, or CSV output.
 
 The tool intentionally does not implement the notebook's accuracy calculation because the input directory can be any arbitrary project.
@@ -72,6 +73,7 @@ bun run src/cli.ts ./path/to/project --format json
 bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
 bun run src/cli.ts ./path/to/project --model openai:o3-mini --thinking-effort high
+bun run src/cli.ts ./path/to/project --mode classification --format csv
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
 
@@ -91,6 +93,7 @@ Example YAML config:
 
 ```yaml
 model: openai:gpt-4.1
+mode: localisation
 concurrency: 4
 retries: 3
 thinkingEffort: high
@@ -105,6 +108,7 @@ Environment variables:
 
 - `SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE`
 - `SQL_ANTIPATTERN_DETECTOR_MODEL`
+- `SQL_ANTIPATTERN_DETECTOR_MODE`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
 - `SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT`
@@ -127,6 +131,8 @@ OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:o
 
 `thinking-effort` accepts `none`, `minimal`, `low`, `medium`, `high`, or `xhigh`. It is forwarded for `openai:` and `openrouter:` models.
 
+`mode` accepts `localisation` or `classification`. `localisation` is the default and keeps the current occurrence-level behavior. `classification` returns only the distinct antipattern types present in each file.
+
 ## Build a native binary
 
 ```bash
@@ -141,25 +147,23 @@ JSON output contains:
 
 - `rootDirectory`
 - `model`
+- `mode`
 - `generatedAt`
 - `results`
 - `summary`
 
-The `summary` object includes aggregate counts such as total occurrences and distinct antipatterns found.
+The `summary` object includes aggregate counts such as total findings and distinct antipatterns found. In `classification` mode, `totalOccurrences` represents the sum of distinct antipattern types reported across files.
 
 Each result includes:
 
 - `filePath`
 - `relativePath`
 - `promptType`
-- `occurrences`
+- `occurrences` in `localisation` mode
+- `antipatterns` in `classification` mode
 - `usage`
 
-CSV output contains one row per antipattern occurrence with these columns:
+CSV output contains:
 
-- `Project`
-- `Antipattern`
-- `File`
-- `Line from`
-- `Line to`
-- `Explanation`
+- one row per antipattern occurrence in `localisation` mode with columns `Project`, `Antipattern`, `File`, `Line from`, `Line to`, `Explanation`
+- one row per `(file, antipattern)` pair in `classification` mode with columns `Project`, `Antipattern`, `File`

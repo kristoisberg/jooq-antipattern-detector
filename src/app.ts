@@ -10,6 +10,7 @@ import type { FileAnalysis, RunSummary } from "./types.js";
 export function buildAnalyzeOptions(config: AppConfig): AnalyzeOptions {
   return {
     model: config.model,
+    mode: config.mode,
     concurrency: config.concurrency,
     retries: config.retries,
     thinkingEffort: config.thinkingEffort,
@@ -21,6 +22,7 @@ export function buildAnalyzeOptions(config: AppConfig): AnalyzeOptions {
 export function createCliOutput(
   rootDirectory: string,
   model: string,
+  mode: AppConfig["mode"],
   analyses: FileAnalysis[],
   summary: RunSummary,
   now: Date = new Date(),
@@ -28,6 +30,7 @@ export function createCliOutput(
   return {
     rootDirectory,
     model,
+    mode,
     generatedAt: now.toISOString(),
     results: analyses,
     summary,
@@ -36,11 +39,11 @@ export function createCliOutput(
 
 export async function runAnalysis(directory: string, config: AppConfig): Promise<CliOutput> {
   const rootDirectory = path.resolve(directory);
-  const prompts = getPrompts();
+  const prompts = getPrompts(config.mode);
   const discovery = await discoverApplicableFiles(rootDirectory);
   const { analyses, summary } = await analyzeFiles(discovery.candidates, prompts, buildAnalyzeOptions(config));
 
   summary.scannedJavaFiles = discovery.allJavaFiles.length;
 
-  return createCliOutput(rootDirectory, config.model, analyses, summary);
+  return createCliOutput(rootDirectory, config.model, config.mode, analyses, summary);
 }

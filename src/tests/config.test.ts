@@ -12,6 +12,7 @@ describe("resolveConfig", () => {
   test("uses environment values when CLI args are absent", () => {
     const config = resolveConfig([], {
       SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
+      SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
       SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
       SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
       SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
@@ -22,6 +23,7 @@ describe("resolveConfig", () => {
     });
 
     expect(config.model).toBe("openrouter:openai/gpt-4.1");
+    expect(config.mode).toBe("classification");
     expect(config.concurrency).toBe(4);
     expect(config.retries).toBe(3);
     expect(config.thinkingEffort).toBe("high");
@@ -60,6 +62,7 @@ describe("resolveConfig", () => {
     const config = resolveConfig([], {});
 
     expect(config.model).toBe("anthropic:claude-opus-4-5");
+    expect(config.mode).toBe("localisation");
     expect(config.concurrency).toBe(8);
     expect(config.retries).toBe(2);
     expect(config.thinkingEffort).toBe("none");
@@ -76,6 +79,7 @@ describe("resolveConfig", () => {
         configFile,
         [
           "model: openai:gpt-4.1",
+          "mode: classification",
           "concurrency: 5",
           "retries: 4",
           "thinkingEffort: medium",
@@ -92,6 +96,7 @@ describe("resolveConfig", () => {
       const config = resolveConfig(["--config-file", configFile], {});
 
       expect(config.model).toBe("openai:gpt-4.1");
+      expect(config.mode).toBe("classification");
       expect(config.concurrency).toBe(5);
       expect(config.retries).toBe(4);
       expect(config.thinkingEffort).toBe("medium");
@@ -137,13 +142,10 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, ["concurrency: 3", "debug: false", ""].join("\n"), "utf8");
 
-      const config = resolveConfig(
-        ["--config-file", configFile, "--concurrency", "7", "--debug", "false"],
-        {
-          SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
-          SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
-        },
-      );
+      const config = resolveConfig(["--config-file", configFile, "--concurrency", "7", "--debug", "false"], {
+        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
+        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+      });
 
       expect(config.concurrency).toBe(7);
       expect(config.debug).toBe(false);
@@ -161,12 +163,9 @@ describe("resolveConfig", () => {
       writeFileSync(cliConfigFile, ["concurrency: 6", ""].join("\n"), "utf8");
       writeFileSync(envConfigFile, ["concurrency: 2", ""].join("\n"), "utf8");
 
-      const config = resolveConfig(
-        ["--config-file", cliConfigFile],
-        {
-          SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: envConfigFile,
-        },
-      );
+      const config = resolveConfig(["--config-file", cliConfigFile], {
+        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: envConfigFile,
+      });
 
       expect(config.concurrency).toBe(6);
     } finally {
@@ -181,11 +180,15 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, ["format: csv", ""].join("\n"), "utf8");
 
-      const config = resolveConfig([], {}, {
-        existsSync: (filePath) => filePath === configFile,
-        readFileSync: () => "format: csv\n",
-        homedir: () => directory,
-      });
+      const config = resolveConfig(
+        [],
+        {},
+        {
+          existsSync: (filePath) => filePath === configFile,
+          readFileSync: () => "format: csv\n",
+          homedir: () => directory,
+        },
+      );
 
       expect(config.format).toBe("csv");
     } finally {
@@ -200,6 +203,7 @@ describe("resolveConfig", () => {
     expect(program.options.map((option) => option.long)).toEqual([
       "--config-file",
       "--model",
+      "--mode",
       "--concurrency",
       "--retries",
       "--thinking-effort",
@@ -217,6 +221,10 @@ describe("resolveConfig", () => {
     expect(() => resolveConfig(["--model", ""], {})).toThrow("must be a non-empty string");
   });
 
+  test("rejects an invalid mode value", () => {
+    expect(() => resolveConfig(["--mode", "invalid"], {})).toThrow();
+  });
+
   test("rejects invalid positive integer values", () => {
     expect(() => resolveConfig(["--concurrency", "0"], {})).toThrow("must be a positive integer");
   });
@@ -230,13 +238,17 @@ describe("resolveConfig", () => {
   });
 
   test("ignores the default home config file when it does not exist", () => {
-    const config = resolveConfig([], {}, {
-      existsSync: () => false,
-      readFileSync: () => {
-        throw new Error("readFileSync should not be called");
+    const config = resolveConfig(
+      [],
+      {},
+      {
+        existsSync: () => false,
+        readFileSync: () => {
+          throw new Error("readFileSync should not be called");
+        },
+        homedir: () => "/tmp/non-existent-home",
       },
-      homedir: () => "/tmp/non-existent-home",
-    });
+    );
 
     expect(config.format).toBe("text");
   });

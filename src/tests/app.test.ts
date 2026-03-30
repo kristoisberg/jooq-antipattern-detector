@@ -8,6 +8,7 @@ describe("buildAnalyzeOptions", () => {
   test("maps app config to analyzer options", () => {
     const config: AppConfig = {
       model: "google:gemini-2.5-pro",
+      mode: "localisation",
       concurrency: 3,
       retries: 4,
       thinkingEffort: "high",
@@ -20,6 +21,7 @@ describe("buildAnalyzeOptions", () => {
 
     expect(buildAnalyzeOptions(config)).toEqual({
       model: "google:gemini-2.5-pro",
+      mode: "localisation",
       concurrency: 3,
       retries: 4,
       thinkingEffort: "high",
@@ -55,10 +57,18 @@ describe("createCliOutput", () => {
     ];
 
     expect(
-      createCliOutput("/tmp/project", "google:gemini-2.5-pro", analyses, summary, new Date("2025-01-01T00:00:00.000Z")),
+      createCliOutput(
+        "/tmp/project",
+        "google:gemini-2.5-pro",
+        "localisation",
+        analyses,
+        summary,
+        new Date("2025-01-01T00:00:00.000Z"),
+      ),
     ).toEqual({
       rootDirectory: "/tmp/project",
       model: "google:gemini-2.5-pro",
+      mode: "localisation",
       generatedAt: "2025-01-01T00:00:00.000Z",
       results: analyses,
       summary,

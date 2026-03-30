@@ -5,6 +5,7 @@ import { renderOutput, type CliOutput } from "../output.js";
 const sampleOutput: CliOutput = {
   rootDirectory: "/tmp/my-project",
   model: "google:gemini-2.5-pro",
+  mode: "localisation",
   generatedAt: "2025-01-01T00:00:00.000Z",
   summary: {
     scannedJavaFiles: 3,
@@ -29,7 +30,8 @@ const sampleOutput: CliOutput = {
           linesRangeStart: 10,
           linesRangeEnd: 12,
           codeFragment: "id BIGINT",
-          explanation: 'This table uses a generic "id" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key.',
+          explanation:
+            'This table uses a generic "id" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key.',
         },
         {
           antipatternName: "31 Flavors",
@@ -51,6 +53,8 @@ const sampleOutput: CliOutput = {
   ],
 };
 
+const [sampleFinding, sampleFailure] = sampleOutput.results;
+
 describe("renderOutput", () => {
   test("renders text output for empty results", () => {
     const rendered = stripAnsi(
@@ -65,6 +69,7 @@ describe("renderOutput", () => {
 
     expect(rendered).toContain("SQL Antipattern Detector");
     expect(rendered).toContain("google:gemini-2.5-pro");
+    expect(rendered).toContain("localisation");
     expect(rendered).toContain("No applicable Java files were found.");
   });
 
@@ -74,14 +79,14 @@ describe("renderOutput", () => {
         {
           ...sampleOutput,
           results: [
-            sampleOutput.results[0]!,
+            sampleFinding,
             {
               filePath: "/tmp/my-project/src/Gamma.java",
               relativePath: "src/Gamma.java",
               promptType: "dml-dql",
               occurrences: [],
             },
-            sampleOutput.results[1]!,
+            sampleFailure,
           ],
         },
         "text",
@@ -99,13 +104,9 @@ describe("renderOutput", () => {
     expect(rendered).toContain(
       'Explanation This table uses a generic "id" primary key, which hides the real business identifier.',
     );
-    expect(rendered).toContain(
-      'primary key.\n\n  31 Flavors (20-20)',
-    );
+    expect(rendered).toContain("primary key.\n\n  31 Flavors (20-20)");
     expect(rendered).toContain("Code        status ENUM(...)");
-    expect(rendered).toContain(
-      'foreign key,\n              and escape "quotes" correctly.',
-    );
+    expect(rendered).toContain('foreign key,\n              and escape "quotes" correctly.');
     expect(rendered).not.toContain("src/Gamma.java");
     expect(rendered).not.toContain("[ddl]");
     expect(rendered).not.toContain("[dml-dql]");
@@ -170,8 +171,76 @@ describe("renderOutput", () => {
 
     expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Explanation");
   });
+
+  test("renders classification text and csv output using per-file antipattern names", () => {
+    const classificationOutput: CliOutput = {
+      ...sampleOutput,
+      mode: "classification",
+      summary: {
+        ...sampleOutput.summary,
+        filesWithFindings: 2,
+        totalOccurrences: 3,
+        distinctAntipatterns: 2,
+      },
+      results: [
+        {
+          filePath: "/tmp/my-project/src/Alpha.java",
+          relativePath: "src/Alpha.java",
+          promptType: "ddl",
+          antipatterns: ["ID Required", "31 Flavors"],
+        },
+        {
+          filePath: "/tmp/my-project/src/Beta.java",
+          relativePath: "src/Beta.java",
+          promptType: "dml-dql",
+          antipatterns: ["Beware of the Unknown"],
+        },
+      ],
+    };
+
+    const renderedText = stripAnsi(renderOutput(classificationOutput, "text"));
+    expect(renderedText).toContain("Mode");
+    expect(renderedText).toContain("classification");
+    expect(renderedText).toContain("src/Alpha.java");
+    expect(renderedText).toContain("ID Required");
+    expect(renderedText).toContain("31 Flavors");
+    expect(renderedText).not.toContain("Code        ");
+    expect(renderedText).not.toContain("Explanation ");
+
+    const renderedCsv = renderOutput(classificationOutput, "csv");
+    expect(renderedCsv).toBe(
+      [
+        "Project,Antipattern,File",
+        "my-project,ID Required,src/Alpha.java",
+        "my-project,31 Flavors,src/Alpha.java",
+        "my-project,Beware of the Unknown,src/Beta.java",
+      ].join("\n"),
+    );
+  });
 });
 
 function stripAnsi(value: string): string {
-  return value.replace(/\u001B\[[0-9;]*m/g, "");
+  let result = "";
+  let index = 0;
+
+  while (index < value.length) {
+    if (value[index] === "\u001B" && value[index + 1] === "[") {
+      index += 2;
+
+      while (index < value.length && value[index] !== "m") {
+        index += 1;
+      }
+
+      if (index < value.length) {
+        index += 1;
+      }
+
+      continue;
+    }
+
+    result += value[index];
+    index += 1;
+  }
+
+  return result;
 }

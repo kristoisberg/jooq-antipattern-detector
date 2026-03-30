@@ -7,17 +7,23 @@ import type { FileCandidate } from "./file-discovery.js";
 import { createModel } from "./model.js";
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
-import { analysisResponseSchema, type AnalysisUsage, type FileAnalysis, type RunSummary } from "./types.js";
+import {
+  classificationAnalysisResponseSchema,
+  localisationAnalysisResponseSchema,
+  type AnalysisUsage,
+  type ClassificationAnalysisResponse,
+  type AntipatternName,
+  type FileAnalysis,
+  type RunSummary,
+} from "./types.js";
 
 export type AnalyzeOptions = Pick<
   AppConfig,
-  "model" | "concurrency" | "retries" | "thinkingEffort" | "debug" | "apiKeys"
+  "model" | "mode" | "concurrency" | "retries" | "thinkingEffort" | "debug" | "apiKeys"
 >;
 
 type AnalysisObjectResult = Promise<{
-  object: {
-    occurrences: FileAnalysis["occurrences"];
-  };
+  object: object;
   usage?: AnalysisUsage & {
     promptTokens?: number;
     completionTokens?: number;
@@ -30,6 +36,7 @@ export type AnalyzerDeps = {
     model: LanguageModelV1,
     prompt: string,
     providerId: string,
+    mode: AppConfig["mode"],
     thinkingEffort: AppConfig["thinkingEffort"],
   ) => AnalysisObjectResult;
   writeDebug: (message: string) => void;
@@ -37,10 +44,9 @@ export type AnalyzerDeps = {
 
 const defaultAnalyzerDeps: AnalyzerDeps = {
   createModel,
-  generateAnalysisObject: (model, prompt, providerId, thinkingEffort) =>
-    generateObject({
+  generateAnalysisObject: (model, prompt, providerId, mode, thinkingEffort) => {
+    const sharedOptions = {
       model,
-      schema: analysisResponseSchema,
       temperature: 0,
       prompt,
       ...(supportsThinkingEffort(providerId)
@@ -52,7 +58,20 @@ const defaultAnalyzerDeps: AnalyzerDeps = {
             },
           }
         : {}),
-    }),
+    };
+
+    if (mode === "classification") {
+      return generateObject({
+        ...sharedOptions,
+        schema: classificationAnalysisResponseSchema,
+      });
+    }
+
+    return generateObject({
+      ...sharedOptions,
+      schema: localisationAnalysisResponseSchema,
+    });
+  },
   writeDebug: (message) => {
     process.stderr.write(message);
   },
@@ -73,15 +92,14 @@ export async function analyzeFiles(
         const prompt = buildPrompt(candidate, prompts);
 
         return analyzeWithRetry(model, candidate, prompt, options, deps).catch((error) =>
-          buildFailedAnalysis(candidate, error),
+          buildFailedAnalysis(candidate, error, options.mode),
         );
       }),
     ),
   );
 
   analyses.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
-
-  const distinctAntipatterns = new Set<FileAnalysis["occurrences"][number]["antipatternName"]>();
+  const distinctAntipatterns = new Set<string>();
 
   const summary = analyses.reduce<RunSummary>(
     (acc, analysis) => {
@@ -89,14 +107,16 @@ export async function analyzeFiles(
         acc.failedFiles += 1;
       } else {
         acc.analyzedFiles += 1;
-        for (const occurrence of analysis.occurrences) {
-          distinctAntipatterns.add(occurrence.antipatternName);
+        for (const antipattern of getAnalysisAntipatterns(analysis)) {
+          distinctAntipatterns.add(antipattern);
         }
       }
-      if (analysis.occurrences.length > 0) {
+      const findingCount = getAnalysisFindingCount(analysis);
+
+      if (findingCount > 0) {
         acc.filesWithFindings += 1;
       }
-      acc.totalOccurrences += analysis.occurrences.length;
+      acc.totalOccurrences += findingCount;
       acc.inputTokens += analysis.usage?.inputTokens ?? 0;
       acc.outputTokens += analysis.usage?.outputTokens ?? 0;
       acc.totalTokens += analysis.usage?.totalTokens ?? 0;
@@ -121,12 +141,22 @@ export async function analyzeFiles(
   return { analyses, summary };
 }
 
-function buildFailedAnalysis(candidate: FileCandidate, error: unknown): FileAnalysis {
+function buildFailedAnalysis(candidate: FileCandidate, error: unknown, mode: AppConfig["mode"]): FileAnalysis {
+  if (mode === "localisation") {
+    return {
+      filePath: candidate.absolutePath,
+      relativePath: candidate.relativePath,
+      promptType: candidate.promptType,
+      occurrences: [],
+      error: formatError(error),
+    };
+  }
+
   return {
     filePath: candidate.absolutePath,
     relativePath: candidate.relativePath,
     promptType: candidate.promptType,
-    occurrences: [],
+    antipatterns: [],
     error: formatError(error),
   };
 }
@@ -146,25 +176,16 @@ async function analyzeWithRetry(
         model,
         prompt,
         getProviderId(options.model),
+        options.mode,
         options.thinkingEffort,
       );
-      const validatedObject = analysisResponseSchema.parse(result.object);
+      const analysis = buildSuccessfulAnalysis(candidate, result.object, result.usage, options.mode);
 
       if (options.debug) {
         deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);
       }
 
-      return {
-        filePath: candidate.absolutePath,
-        relativePath: candidate.relativePath,
-        promptType: candidate.promptType,
-        occurrences: validatedObject.occurrences,
-        usage: {
-          inputTokens: result.usage?.promptTokens,
-          outputTokens: result.usage?.completionTokens,
-          totalTokens: result.usage?.totalTokens,
-        },
-      };
+      return analysis;
     } catch (error) {
       lastError = error;
       if (options.debug) {
@@ -174,6 +195,60 @@ async function analyzeWithRetry(
   }
 
   throw new Error(`Failed to analyze ${candidate.relativePath}: ${formatError(lastError)}`);
+}
+
+function buildSuccessfulAnalysis(
+  candidate: FileCandidate,
+  object: object,
+  usage:
+    | {
+        promptTokens?: number;
+        completionTokens?: number;
+        totalTokens?: number;
+      }
+    | undefined,
+  mode: AppConfig["mode"],
+): FileAnalysis {
+  const baseAnalysis = {
+    filePath: candidate.absolutePath,
+    relativePath: candidate.relativePath,
+    promptType: candidate.promptType,
+    usage: {
+      inputTokens: usage?.promptTokens,
+      outputTokens: usage?.completionTokens,
+      totalTokens: usage?.totalTokens,
+    },
+  };
+
+  if (mode === "classification") {
+    const validatedObject = classificationAnalysisResponseSchema.parse(object);
+
+    return {
+      ...baseAnalysis,
+      antipatterns: dedupeAntipatterns(validatedObject.antipatterns),
+    };
+  }
+
+  const validatedObject = localisationAnalysisResponseSchema.parse(object);
+
+  return {
+    ...baseAnalysis,
+    occurrences: validatedObject.occurrences,
+  };
+}
+
+function dedupeAntipatterns(antipatterns: ClassificationAnalysisResponse["antipatterns"]): AntipatternName[] {
+  return [...new Set(antipatterns)];
+}
+
+function getAnalysisFindingCount(analysis: FileAnalysis): number {
+  return "occurrences" in analysis ? analysis.occurrences.length : analysis.antipatterns.length;
+}
+
+function getAnalysisAntipatterns(analysis: FileAnalysis): string[] {
+  return "occurrences" in analysis
+    ? analysis.occurrences.map((occurrence) => occurrence.antipatternName)
+    : analysis.antipatterns;
 }
 
 function formatError(error: unknown): string {

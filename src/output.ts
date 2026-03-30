@@ -1,11 +1,12 @@
 import path from "node:path";
 
-import type { OutputFormat } from "./config.js";
+import type { AnalysisMode, OutputFormat } from "./config.js";
 import type { FileAnalysis, RunSummary } from "./types.js";
 
 export type CliOutput = {
   rootDirectory: string;
   model: string;
+  mode: AnalysisMode;
   generatedAt: string;
   results: FileAnalysis[];
   summary: RunSummary;
@@ -33,11 +34,12 @@ export function renderOutput(output: CliOutput, format: OutputFormat): string {
 
 export function renderTextReport(output: CliOutput): string {
   const lines: string[] = [];
-  const findings = output.results.filter((result) => result.occurrences.length > 0);
+  const findings = output.results.filter((result) => getFindingCount(result) > 0);
   const failures = output.results.filter((result) => result.error);
 
   lines.push(style.bold(style.cyan("SQL Antipattern Detector")));
   lines.push(`${style.dim("Model")}      ${output.model}`);
+  lines.push(`${style.dim("Mode")}       ${output.mode}`);
   lines.push(`${style.dim("Directory")}  ${output.rootDirectory}`);
   lines.push("");
   lines.push(style.bold("Summary"));
@@ -64,17 +66,23 @@ export function renderTextReport(output: CliOutput): string {
       lines.push(renderFileDivider());
       lines.push(renderResultHeader(result));
 
-      for (const [index, occurrence] of result.occurrences.entries()) {
-        lines.push(
-          `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
-            `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
-          )}`,
-        );
-        lines.push(...renderDetailBlock("Code", occurrence.codeFragment));
-        lines.push(...renderDetailBlock("Explanation", occurrence.explanation));
+      if ("occurrences" in result) {
+        for (const [index, occurrence] of result.occurrences.entries()) {
+          lines.push(
+            `  ${style.bold(style.yellow(occurrence.antipatternName))} ${style.dim(
+              `(${occurrence.linesRangeStart}-${occurrence.linesRangeEnd})`,
+            )}`,
+          );
+          lines.push(...renderDetailBlock("Code", occurrence.codeFragment));
+          lines.push(...renderDetailBlock("Explanation", occurrence.explanation));
 
-        if (index < result.occurrences.length - 1) {
-          lines.push("");
+          if (index < result.occurrences.length - 1) {
+            lines.push("");
+          }
+        }
+      } else {
+        for (const antipattern of result.antipatterns) {
+          lines.push(`  ${style.bold(style.yellow(antipattern))}`);
         }
       }
     }
@@ -97,10 +105,23 @@ export function renderTextReport(output: CliOutput): string {
 
 function renderCsvReport(output: CliOutput): string {
   const projectName = path.basename(output.rootDirectory);
+  if (output.mode === "classification") {
+    const rows = [
+      ["Project", "Antipattern", "File"],
+      ...output.results.flatMap((result) =>
+        result.error || !("antipatterns" in result)
+          ? []
+          : result.antipatterns.map((antipattern) => [projectName, antipattern, result.relativePath]),
+      ),
+    ];
+
+    return rows.map((row) => row.map(escapeCsvField).join(",")).join("\n");
+  }
+
   const rows = [
     ["Project", "Antipattern", "File", "Line from", "Line to", "Explanation"],
     ...output.results.flatMap((result) =>
-      result.error
+      result.error || !("occurrences" in result)
         ? []
         : result.occurrences.map((occurrence) => [
             projectName,
@@ -153,6 +174,10 @@ function renderSummary(summary: RunSummary): string[] {
     renderSummaryLine("Output tokens", summary.outputTokens),
     renderSummaryLine("Total tokens", summary.totalTokens),
   ];
+}
+
+function getFindingCount(result: FileAnalysis): number {
+  return "occurrences" in result ? result.occurrences.length : result.antipatterns.length;
 }
 
 function renderSummaryLine(label: string, value: number): string {
