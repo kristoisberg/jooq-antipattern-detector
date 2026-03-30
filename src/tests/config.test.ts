@@ -14,6 +14,7 @@ describe("resolveConfig", () => {
       SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
       SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
       SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
+      SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
       SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
       SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
       SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
@@ -25,6 +26,7 @@ describe("resolveConfig", () => {
     expect(config.mode).toBe("classification");
     expect(config.concurrency).toBe(4);
     expect(config.retries).toBe(3);
+    expect(config.temperature).toBe(0.7);
     expect(config.thinkingEffort).toBe("high");
     expect(config.format).toBe("csv");
     expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
@@ -36,6 +38,7 @@ describe("resolveConfig", () => {
     const config = resolveConfig(
       {
         concurrency: 7,
+        temperature: 0.2,
         thinkingEffort: "xhigh",
         debug: true,
         apiKeys: {
@@ -44,6 +47,7 @@ describe("resolveConfig", () => {
       },
       {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
+        SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.9",
         SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
         SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
         OPENAI_API_KEY: "env-key",
@@ -51,6 +55,7 @@ describe("resolveConfig", () => {
     );
 
     expect(config.concurrency).toBe(7);
+    expect(config.temperature).toBe(0.2);
     expect(config.thinkingEffort).toBe("xhigh");
     expect(config.debug).toBe(true);
     expect(config.apiKeys.openai).toBe("cli-key");
@@ -71,6 +76,7 @@ describe("resolveConfig", () => {
     expect(config.mode).toBe("localisation");
     expect(config.concurrency).toBe(8);
     expect(config.retries).toBe(2);
+    expect(config.temperature).toBe(0);
     expect(config.thinkingEffort).toBe("none");
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
@@ -88,6 +94,7 @@ describe("resolveConfig", () => {
           "mode: classification",
           "concurrency: 5",
           "retries: 4",
+          "temperature: 0.4",
           "thinkingEffort: medium",
           "format: json",
           "output: reports/findings.json",
@@ -105,6 +112,7 @@ describe("resolveConfig", () => {
       expect(config.mode).toBe("classification");
       expect(config.concurrency).toBe(5);
       expect(config.retries).toBe(4);
+      expect(config.temperature).toBe(0.4);
       expect(config.thinkingEffort).toBe("medium");
       expect(config.format).toBe("json");
       expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
@@ -216,6 +224,7 @@ describe("resolveConfig", () => {
       "--mode",
       "--concurrency",
       "--retries",
+      "--temperature",
       "--thinking-effort",
       "--format",
       "--output",
@@ -239,9 +248,16 @@ describe("resolveConfig", () => {
     expect(() => resolveConfig({ concurrency: 0 }, {})).toThrow("Invalid configuration: must be a positive integer");
   });
 
+  test("rejects invalid temperature values", () => {
+    expect(() => resolveConfig({ temperature: Number.NaN }, {})).toThrow(
+      "Invalid configuration: Expected number, received nan",
+    );
+  });
+
   test("maps commander options into CLI overrides", () => {
     const overrides = getCliOverrides({
       concurrency: 7,
+      temperature: "0.3",
       thinkingEffort: "xhigh",
       debug: true,
       configFile: "/tmp/detector.yml",
@@ -250,6 +266,7 @@ describe("resolveConfig", () => {
 
     expect(overrides).toEqual({
       concurrency: 7,
+      temperature: 0.3,
       thinkingEffort: "xhigh",
       debug: true,
       configFile: "/tmp/detector.yml",

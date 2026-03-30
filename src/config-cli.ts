@@ -30,7 +30,7 @@ export function getCliOverrides(options: Record<string, unknown>): CliOverrides 
     const value = options[field.key];
 
     if (value !== undefined) {
-      setConfigProperty(overrides, field.key, value as ConfigProperties[typeof field.key]);
+      setConfigProperty(overrides, field.key, normalizeCliValue(value, field.kind) as ConfigProperties[typeof field.key]);
     }
   }
 
@@ -63,4 +63,12 @@ function setApiKey(overrides: Partial<ConfigProperties>, apiKeyField: keyof Null
   const apiKeys = overrides.apiKeys ?? {};
   apiKeys[apiKeyField] = value;
   overrides.apiKeys = apiKeys;
+}
+
+function normalizeCliValue(value: unknown, kind: "string" | "number" | "boolean"): unknown {
+  if (kind === "number" && typeof value === "string") {
+    return Number.parseFloat(value);
+  }
+
+  return value;
 }

@@ -19,7 +19,7 @@ import {
 
 export type AnalyzeOptions = Pick<
   AppConfig,
-  "model" | "mode" | "concurrency" | "retries" | "thinkingEffort" | "debug" | "apiKeys"
+  "model" | "mode" | "concurrency" | "retries" | "temperature" | "thinkingEffort" | "debug" | "apiKeys"
 >;
 
 type AnalysisObjectResult = Promise<{
@@ -37,6 +37,7 @@ export type AnalyzerDeps = {
     prompt: string,
     providerId: string,
     mode: AppConfig["mode"],
+    temperature: AppConfig["temperature"],
     thinkingEffort: AppConfig["thinkingEffort"],
   ) => AnalysisObjectResult;
   writeDebug: (message: string) => void;
@@ -44,10 +45,10 @@ export type AnalyzerDeps = {
 
 const defaultAnalyzerDeps: AnalyzerDeps = {
   createModel,
-  generateAnalysisObject: (model, prompt, providerId, mode, thinkingEffort) => {
+  generateAnalysisObject: (model, prompt, providerId, mode, temperature, thinkingEffort) => {
     const sharedOptions = {
       model,
-      temperature: 0,
+      temperature,
       prompt,
       ...(supportsThinkingEffort(providerId)
         ? {
@@ -149,6 +150,7 @@ async function analyzeWithRetry(
         prompt,
         providerId,
         options.mode,
+        options.temperature,
         options.thinkingEffort,
       );
       const analysis = buildSuccessfulAnalysis(candidate, result.object, result.usage, options.mode);

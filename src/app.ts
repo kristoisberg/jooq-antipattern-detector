@@ -13,6 +13,7 @@ export function buildAnalyzeOptions(config: AppConfig): AnalyzeOptions {
     mode: config.mode,
     concurrency: config.concurrency,
     retries: config.retries,
+    temperature: config.temperature,
     thinkingEffort: config.thinkingEffort,
     debug: config.debug,
     apiKeys: config.apiKeys,

@@ -13,6 +13,7 @@ export type AppConfig = {
   mode: AnalysisMode;
   concurrency: number;
   retries: number;
+  temperature: number;
   thinkingEffort: ThinkingEffort;
   format: OutputFormat;
   output?: string;
@@ -65,6 +66,7 @@ const outputFormatValues = ["text", "json", "csv"] as const satisfies readonly O
 
 const nonEmptyStringSchema = z.string().min(1, { message: "must be a non-empty string" });
 const positiveIntegerSchema = z.number().int().min(1, { message: "must be a positive integer" });
+const finiteNumberSchema = z.number().finite({ message: "must be a finite number" });
 
 export const CONFIG_FIELDS = [
   {
@@ -104,6 +106,15 @@ export const CONFIG_FIELDS = [
     kind: "number",
     default: 2,
     schema: positiveIntegerSchema,
+  },
+  {
+    key: "temperature",
+    flags: "--temperature <number>",
+    description: "Model sampling temperature",
+    env: "SQL_ANTIPATTERN_DETECTOR_TEMPERATURE",
+    kind: "number",
+    default: 0.0,
+    schema: finiteNumberSchema,
   },
   {
     key: "thinkingEffort",

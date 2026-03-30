@@ -11,6 +11,7 @@ describe("buildAnalyzeOptions", () => {
       mode: "localisation",
       concurrency: 3,
       retries: 4,
+      temperature: 0.25,
       thinkingEffort: "high",
       format: "json",
       debug: true,
@@ -24,6 +25,7 @@ describe("buildAnalyzeOptions", () => {
       mode: "localisation",
       concurrency: 3,
       retries: 4,
+      temperature: 0.25,
       thinkingEffort: "high",
       debug: true,
       apiKeys: {

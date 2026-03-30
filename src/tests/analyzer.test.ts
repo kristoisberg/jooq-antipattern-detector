@@ -32,6 +32,7 @@ const options: AnalyzeOptions = {
   mode: "localisation",
   concurrency: 2,
   retries: 2,
+  temperature: 0.35,
   thinkingEffort: "medium",
   debug: true,
   apiKeys: {
@@ -47,10 +48,11 @@ describe("analyzeFiles", () => {
 
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, prompt, providerId, mode, thinkingEffort) => {
+      generateAnalysisObject: async (_model, prompt, providerId, mode, temperature, thinkingEffort) => {
         promptsSeen.push(prompt);
         expect(providerId).toBe("google");
         expect(mode).toBe("localisation");
+        expect(temperature).toBe(0.35);
         expect(thinkingEffort).toBe("medium");
         const currentAttempt = (attempts.get(prompt) ?? 0) + 1;
         attempts.set(prompt, currentAttempt);
@@ -122,9 +124,10 @@ describe("analyzeFiles", () => {
   test("converts exhausted retries into file analysis errors", async () => {
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, _prompt, providerId, mode, thinkingEffort) => {
+      generateAnalysisObject: async (_model, _prompt, providerId, mode, temperature, thinkingEffort) => {
         expect(providerId).toBe("google");
         expect(mode).toBe("localisation");
+        expect(temperature).toBe(0.35);
         expect(thinkingEffort).toBe("medium");
         throw new Error("always failing");
       },
@@ -224,9 +227,10 @@ describe("analyzeFiles", () => {
   test("supports classification mode with distinct antipatterns per file", async () => {
     const deps: AnalyzerDeps = {
       createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
-      generateAnalysisObject: async (_model, prompt, providerId, mode, thinkingEffort) => {
+      generateAnalysisObject: async (_model, prompt, providerId, mode, temperature, thinkingEffort) => {
         expect(providerId).toBe("google");
         expect(mode).toBe("classification");
+        expect(temperature).toBe(0.35);
         expect(thinkingEffort).toBe("medium");
 
         if (prompt.includes("1: a")) {

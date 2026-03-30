@@ -221,7 +221,7 @@ function normalizeOutputPathInConfig(value: unknown): unknown {
 
 function parseEnvValue(rawValue: string, kind: "string" | "number" | "boolean"): string | number | boolean {
   if (kind === "number") {
-    return Number.parseInt(rawValue, 10);
+    return Number.parseFloat(rawValue);
   }
 
   if (kind === "boolean") {

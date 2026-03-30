@@ -72,6 +72,7 @@ bun run src/cli.ts ./path/to/project --config-file ./detector.yml
 bun run src/cli.ts ./path/to/project --format json
 bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
+bun run src/cli.ts ./path/to/project --temperature 0.2
 bun run src/cli.ts ./path/to/project --model openai:o3-mini --thinking-effort high
 bun run src/cli.ts ./path/to/project --mode classification --format csv
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
@@ -95,6 +96,7 @@ model: openai:gpt-4.1
 mode: localisation
 concurrency: 4
 retries: 3
+temperature: 0.0
 thinkingEffort: high
 format: json
 output: reports/findings.json
@@ -109,6 +111,7 @@ Environment variables:
 - `SQL_ANTIPATTERN_DETECTOR_MODE`
 - `SQL_ANTIPATTERN_DETECTOR_CONCURRENCY`
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
+- `SQL_ANTIPATTERN_DETECTOR_TEMPERATURE`
 - `SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT`
 - `SQL_ANTIPATTERN_DETECTOR_FORMAT`
 - `SQL_ANTIPATTERN_DETECTOR_OUTPUT`
