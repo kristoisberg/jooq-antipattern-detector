@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV1 } from "ai";
 
-import { createModel, parseModelIdentifier, type ModelDeps } from "../model.js";
+import {
+  createModel,
+  DEFAULT_MAX_PROMPT_CHARS,
+  parseModelIdentifier,
+  resolvePromptCharacterBudget,
+  type ModelDeps,
+} from "../model.js";
 import type { ProviderDefinition } from "../providers.js";
 
 function createStubDeps(): { deps: ModelDeps; calls: Array<{ provider: string; modelId: string; apiKey: string }> } {
@@ -136,5 +142,19 @@ describe("parseModelIdentifier", () => {
     expect(() => parseModelIdentifier("openai:   ")).toThrow(
       'Provider prefix "openai" must be followed by a model identifier.',
     );
+  });
+});
+
+describe("resolvePromptCharacterBudget", () => {
+  test("uses the explicit override when provided", () => {
+    expect(resolvePromptCharacterBudget("openrouter:anthropic/claude-opus-4.5", 123456)).toBe(123456);
+  });
+
+  test("returns a larger model-aware budget for known claude models", () => {
+    expect(resolvePromptCharacterBudget("openrouter:anthropic/claude-opus-4.5")).toBe(240000);
+  });
+
+  test("falls back to the default budget for unknown models", () => {
+    expect(resolvePromptCharacterBudget("openrouter:unknown/model")).toBe(DEFAULT_MAX_PROMPT_CHARS);
   });
 });

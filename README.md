@@ -74,6 +74,7 @@ bun run src/cli.ts ./path/to/project --format csv
 bun run src/cli.ts ./path/to/project --output reports/findings.json --format json
 bun run src/cli.ts ./path/to/project --temperature 0.2
 bun run src/cli.ts ./path/to/project --model openai:o3-mini --thinking-effort high
+bun run src/cli.ts ./path/to/project --max-prompt-chars 150000
 bun run src/cli.ts ./path/to/project --mode classification --format csv
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
@@ -98,6 +99,7 @@ concurrency: 4
 retries: 3
 temperature: 0.0
 thinkingEffort: high
+maxPromptChars: 150000
 format: json
 output: reports/findings.json
 debug: false
@@ -113,6 +115,7 @@ Environment variables:
 - `SQL_ANTIPATTERN_DETECTOR_RETRIES`
 - `SQL_ANTIPATTERN_DETECTOR_TEMPERATURE`
 - `SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT`
+- `SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS`
 - `SQL_ANTIPATTERN_DETECTOR_FORMAT`
 - `SQL_ANTIPATTERN_DETECTOR_OUTPUT`
 - `SQL_ANTIPATTERN_DETECTOR_DEBUG`
@@ -130,6 +133,8 @@ OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:o
 ```
 
 `thinking-effort` accepts `none`, `minimal`, `low`, `medium`, `high`, or `xhigh`. It is forwarded for `openai:` and `openrouter:` models.
+
+`max-prompt-chars` sets a hard cap on prompt size per file. When omitted, the tool uses a conservative automatic budget based on the configured model when it recognizes the model family, and otherwise falls back to a default cap.
 
 `mode` accepts `localisation` or `classification`. `localisation` is the default and keeps the current occurrence-level behavior. `classification` returns only the distinct antipattern types present in each file.
 

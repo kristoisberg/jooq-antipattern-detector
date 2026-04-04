@@ -85,9 +85,10 @@ export function renderTextReport(output: CliOutput): string {
 function renderCsvReport(output: CliOutput): string {
   const projectName = path.basename(output.rootDirectory);
 
-  return (output.mode === "classification"
-    ? renderClassificationCsvReport(output.results, projectName)
-    : renderLocalisationCsvReport(output.results, projectName)
+  return (
+    output.mode === "classification"
+      ? renderClassificationCsvReport(output.results, projectName)
+      : renderLocalisationCsvReport(output.results, projectName)
   )
     .map((row) => row.map(escapeCsvField).join(","))
     .join("\n");

@@ -13,6 +13,7 @@ describe("buildAnalyzeOptions", () => {
       retries: 4,
       temperature: 0.25,
       thinkingEffort: "high",
+      maxPromptChars: 12345,
       format: "json",
       debug: true,
       apiKeys: {
@@ -27,6 +28,7 @@ describe("buildAnalyzeOptions", () => {
       retries: 4,
       temperature: 0.25,
       thinkingEffort: "high",
+      maxPromptChars: 12345,
       debug: true,
       apiKeys: {
         gemini: "test-key",

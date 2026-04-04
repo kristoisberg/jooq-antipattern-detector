@@ -4,7 +4,7 @@ import type { LanguageModelV1 } from "ai";
 
 import type { AppConfig } from "./config.js";
 import type { FileCandidate } from "./file-discovery.js";
-import { createModel, parseModelIdentifier } from "./model.js";
+import { createModel, parseModelIdentifier, resolvePromptCharacterBudget } from "./model.js";
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
 import {
@@ -19,7 +19,15 @@ import {
 
 export type AnalyzeOptions = Pick<
   AppConfig,
-  "model" | "mode" | "concurrency" | "retries" | "temperature" | "thinkingEffort" | "debug" | "apiKeys"
+  | "model"
+  | "mode"
+  | "concurrency"
+  | "retries"
+  | "temperature"
+  | "thinkingEffort"
+  | "maxPromptChars"
+  | "debug"
+  | "apiKeys"
 >;
 
 type AnalysisObjectResult = Promise<{
@@ -86,12 +94,13 @@ export async function analyzeFiles(
 ): Promise<{ analyses: FileAnalysis[]; summary: RunSummary }> {
   const model = deps.createModel(options.model, options.apiKeys);
   const providerId = parseModelIdentifier(options.model).providerId;
+  const promptCharacterBudget = resolvePromptCharacterBudget(options.model, options.maxPromptChars);
   const limit = pLimit(Math.max(1, options.concurrency));
 
   const analyses = await Promise.all(
     candidates.map((candidate) =>
       limit(async () => {
-        const prompt = buildPrompt(candidate, prompts);
+        const prompt = buildPrompt(candidate, prompts, promptCharacterBudget);
 
         return analyzeWithRetry(model, providerId, candidate, prompt, options, deps).catch((error) =>
           buildFailedAnalysis(candidate, error, options.mode),

@@ -9,18 +9,22 @@ import { Command } from "commander";
 
 describe("resolveConfig", () => {
   test("uses environment values when CLI args are absent", () => {
-    const config = resolveConfig({}, {
-      SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
-      SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
-      SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
-      SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
-      SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
-      SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
-      SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
-      SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
-      SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
-      OPENROUTER_API_KEY: "env-key",
-    });
+    const config = resolveConfig(
+      {},
+      {
+        SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
+        SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
+        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
+        SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
+        SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
+        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
+        SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
+        SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
+        SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
+        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+        OPENROUTER_API_KEY: "env-key",
+      },
+    );
 
     expect(config.model).toBe("openrouter:openai/gpt-4.1");
     expect(config.mode).toBe("classification");
@@ -28,6 +32,7 @@ describe("resolveConfig", () => {
     expect(config.retries).toBe(3);
     expect(config.temperature).toBe(0.7);
     expect(config.thinkingEffort).toBe("high");
+    expect(config.maxPromptChars).toBe(321000);
     expect(config.format).toBe("csv");
     expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
     expect(config.debug).toBe(true);
@@ -40,6 +45,7 @@ describe("resolveConfig", () => {
         concurrency: 7,
         temperature: 0.2,
         thinkingEffort: "xhigh",
+        maxPromptChars: 456789,
         debug: true,
         apiKeys: {
           openai: "cli-key",
@@ -49,6 +55,7 @@ describe("resolveConfig", () => {
         SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
         SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.9",
         SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
+        SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
         SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
         OPENAI_API_KEY: "env-key",
       },
@@ -57,14 +64,18 @@ describe("resolveConfig", () => {
     expect(config.concurrency).toBe(7);
     expect(config.temperature).toBe(0.2);
     expect(config.thinkingEffort).toBe("xhigh");
+    expect(config.maxPromptChars).toBe(456789);
     expect(config.debug).toBe(true);
     expect(config.apiKeys.openai).toBe("cli-key");
   });
 
   test("accepts newly supported thinking effort values from the environment", () => {
-    const config = resolveConfig({}, {
-      SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
-    });
+    const config = resolveConfig(
+      {},
+      {
+        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
+      },
+    );
 
     expect(config.thinkingEffort).toBe("minimal");
   });
@@ -78,6 +89,7 @@ describe("resolveConfig", () => {
     expect(config.retries).toBe(2);
     expect(config.temperature).toBe(0);
     expect(config.thinkingEffort).toBe("none");
+    expect(config.maxPromptChars).toBeUndefined();
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
   });
@@ -96,6 +108,7 @@ describe("resolveConfig", () => {
           "retries: 4",
           "temperature: 0.4",
           "thinkingEffort: medium",
+          "maxPromptChars: 654321",
           "format: json",
           "output: reports/findings.json",
           "debug: true",
@@ -114,6 +127,7 @@ describe("resolveConfig", () => {
       expect(config.retries).toBe(4);
       expect(config.temperature).toBe(0.4);
       expect(config.thinkingEffort).toBe("medium");
+      expect(config.maxPromptChars).toBe(654321);
       expect(config.format).toBe("json");
       expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
       expect(config.debug).toBe(true);
@@ -134,11 +148,14 @@ describe("resolveConfig", () => {
         "utf8",
       );
 
-      const config = resolveConfig({ configFile }, {
-        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "9",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
-        OPENAI_API_KEY: "env-key",
-      });
+      const config = resolveConfig(
+        { configFile },
+        {
+          SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "9",
+          SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+          OPENAI_API_KEY: "env-key",
+        },
+      );
 
       expect(config.concurrency).toBe(9);
       expect(config.debug).toBe(true);
@@ -155,10 +172,13 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, ["concurrency: 3", "debug: false", ""].join("\n"), "utf8");
 
-      const config = resolveConfig({ configFile, concurrency: 7, debug: true }, {
-        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "false",
-      });
+      const config = resolveConfig(
+        { configFile, concurrency: 7, debug: true },
+        {
+          SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
+          SQL_ANTIPATTERN_DETECTOR_DEBUG: "false",
+        },
+      );
 
       expect(config.concurrency).toBe(7);
       expect(config.debug).toBe(true);
@@ -226,6 +246,7 @@ describe("resolveConfig", () => {
       "--retries",
       "--temperature",
       "--thinking-effort",
+      "--max-prompt-chars",
       "--format",
       "--output",
       "--debug",
@@ -246,6 +267,7 @@ describe("resolveConfig", () => {
 
   test("rejects invalid positive integer values", () => {
     expect(() => resolveConfig({ concurrency: 0 }, {})).toThrow("Invalid configuration: must be a positive integer");
+    expect(() => resolveConfig({ maxPromptChars: 0 }, {})).toThrow("Invalid configuration: must be a positive integer");
   });
 
   test("rejects invalid temperature values", () => {
@@ -259,6 +281,7 @@ describe("resolveConfig", () => {
       concurrency: 7,
       temperature: "0.3",
       thinkingEffort: "xhigh",
+      maxPromptChars: "123456",
       debug: true,
       configFile: "/tmp/detector.yml",
       openaiApiKey: "cli-key",
@@ -268,6 +291,7 @@ describe("resolveConfig", () => {
       concurrency: 7,
       temperature: 0.3,
       thinkingEffort: "xhigh",
+      maxPromptChars: 123456,
       debug: true,
       configFile: "/tmp/detector.yml",
       apiKeys: {
@@ -277,9 +301,9 @@ describe("resolveConfig", () => {
   });
 
   test("throws when an explicitly configured config file does not exist", () => {
-    expect(() =>
-      resolveConfig({ configFile: "/tmp/missing-config.yml" }, {}),
-    ).toThrow("Config file does not exist: /tmp/missing-config.yml");
+    expect(() => resolveConfig({ configFile: "/tmp/missing-config.yml" }, {})).toThrow(
+      "Config file does not exist: /tmp/missing-config.yml",
+    );
   });
 
   test("ignores the default home config file when it does not exist", () => {
@@ -305,9 +329,7 @@ describe("resolveConfig", () => {
     try {
       writeFileSync(configFile, "format: [\n", "utf8");
 
-      expect(() => resolveConfig({ configFile }, {})).toThrow(
-        `Failed to parse YAML config file at ${configFile}:`,
-      );
+      expect(() => resolveConfig({ configFile }, {})).toThrow(`Failed to parse YAML config file at ${configFile}:`);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

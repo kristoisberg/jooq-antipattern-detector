@@ -84,10 +84,7 @@ function parseEnvironmentOverrides(env: NodeJS.ProcessEnv): Partial<ConfigProper
   return parsePartialConfig(overrides);
 }
 
-function resolveConfigFile(
-  cliConfigFile: string | undefined,
-  deps: ResolveConfigDependencies,
-): ConfigFileResolution {
+function resolveConfigFile(cliConfigFile: string | undefined, deps: ResolveConfigDependencies): ConfigFileResolution {
   if (cliConfigFile) {
     return {
       path: path.resolve(cliConfigFile),
@@ -168,9 +165,7 @@ function parseConfig(value: unknown): AppConfig {
 }
 
 function normalizeApiKeys(apiKeys: Partial<NullableModelApiKeys>): ModelApiKeys {
-  return Object.fromEntries(
-    Object.entries(apiKeys).filter(([, value]) => value != null),
-  ) as ModelApiKeys;
+  return Object.fromEntries(Object.entries(apiKeys).filter(([, value]) => value != null)) as ModelApiKeys;
 }
 
 function mergeConfigLayers(...layers: Array<Partial<ConfigProperties> | AppConfig | null>): ConfigProperties {

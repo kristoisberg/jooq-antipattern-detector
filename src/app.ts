@@ -15,6 +15,7 @@ export function buildAnalyzeOptions(config: AppConfig): AnalyzeOptions {
     retries: config.retries,
     temperature: config.temperature,
     thinkingEffort: config.thinkingEffort,
+    maxPromptChars: config.maxPromptChars,
     debug: config.debug,
     apiKeys: config.apiKeys,
   };

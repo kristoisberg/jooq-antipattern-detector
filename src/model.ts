@@ -8,6 +8,27 @@ export type ResolvedProvider = {
   modelId: string;
 };
 
+export const DEFAULT_MAX_PROMPT_CHARS = 120_000;
+
+const APPROX_CHARS_PER_TOKEN = 4;
+const PROMPT_CONTEXT_UTILIZATION = 0.3;
+const MODEL_CONTEXT_WINDOWS: Array<{
+  providerId: ProviderId;
+  pattern: RegExp;
+  inputTokens: number;
+}> = [
+  {
+    providerId: "anthropic",
+    pattern: /claude.*(?:opus|sonnet|haiku).*(?:4(?:[.-]?5)?|3(?:[.-]?7)?)/i,
+    inputTokens: 200_000,
+  },
+  {
+    providerId: "openrouter",
+    pattern: /claude.*(?:opus|sonnet|haiku).*(?:4(?:[.-]?5)?|3(?:[.-]?7)?)/i,
+    inputTokens: 200_000,
+  },
+];
+
 export type ModelDeps = {
   providers: Record<ProviderId, ProviderDefinition>;
 };
@@ -73,4 +94,25 @@ export function resolveProviderModel(modelId: string, providers: ModelDeps["prov
     definition: providers[parsed.providerId],
     modelId: parsed.modelId,
   };
+}
+
+export function resolvePromptCharacterBudget(modelId: string, override?: number): number {
+  if (override !== undefined) {
+    return override;
+  }
+
+  const parsed = parseModelIdentifier(modelId);
+  const normalizedModelId = parsed.modelId.toLowerCase();
+  const match = MODEL_CONTEXT_WINDOWS.find(
+    (entry) => entry.providerId === parsed.providerId && entry.pattern.test(normalizedModelId),
+  );
+
+  if (!match) {
+    return DEFAULT_MAX_PROMPT_CHARS;
+  }
+
+  return Math.max(
+    DEFAULT_MAX_PROMPT_CHARS,
+    Math.floor(match.inputTokens * APPROX_CHARS_PER_TOKEN * PROMPT_CONTEXT_UTILIZATION),
+  );
 }

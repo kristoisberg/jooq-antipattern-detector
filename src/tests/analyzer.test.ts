@@ -34,6 +34,7 @@ const options: AnalyzeOptions = {
   retries: 2,
   temperature: 0.35,
   thinkingEffort: "medium",
+  maxPromptChars: undefined,
   debug: true,
   apiKeys: {
     gemini: "test-key",
@@ -298,5 +299,37 @@ describe("analyzeFiles", () => {
       outputTokens: 3,
       totalTokens: 11,
     });
+  });
+
+  test("uses the configured prompt character budget when building prompts", async () => {
+    const promptsSeen: string[] = [];
+    const largeCandidate: FileCandidate = {
+      absolutePath: "/tmp/project/large.java",
+      relativePath: "large.java",
+      contents: Array.from({ length: 2000 }, (_, index) => `line ${index + 1}`).join("\n"),
+      promptType: "dml-dql",
+      closestKeysContents: "",
+    };
+
+    const deps: AnalyzerDeps = {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async (_model, prompt) => {
+        promptsSeen.push(prompt);
+        return {
+          object: {
+            occurrences: [],
+          },
+        };
+      },
+      writeDebug: () => {},
+    };
+
+    await analyzeFiles([largeCandidate], prompts, { ...options, maxPromptChars: 5000, debug: false }, deps);
+
+    expect(promptsSeen).toHaveLength(1);
+    const prompt = promptsSeen[0];
+    expect(prompt).toBeDefined();
+    expect(prompt?.length).toBeLessThanOrEqual(5000);
+    expect(prompt).toContain("lines omitted due to prompt size");
   });
 });

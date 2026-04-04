@@ -30,7 +30,11 @@ export function getCliOverrides(options: Record<string, unknown>): CliOverrides 
     const value = options[field.key];
 
     if (value !== undefined) {
-      setConfigProperty(overrides, field.key, normalizeCliValue(value, field.kind) as ConfigProperties[typeof field.key]);
+      setConfigProperty(
+        overrides,
+        field.key,
+        normalizeCliValue(value, field.kind) as ConfigProperties[typeof field.key],
+      );
     }
   }
 

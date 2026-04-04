@@ -15,6 +15,7 @@ export type AppConfig = {
   retries: number;
   temperature: number;
   thinkingEffort: ThinkingEffort;
+  maxPromptChars?: number;
   format: OutputFormat;
   output?: string;
   debug: boolean;
@@ -61,7 +62,14 @@ export type CliOverrides = Partial<ConfigProperties> & {
 };
 
 const analysisModeValues = ["localisation", "classification"] as const satisfies readonly AnalysisMode[];
-const thinkingEffortValues = ["none", "minimal", "low", "medium", "high", "xhigh"] as const satisfies readonly ThinkingEffort[];
+const thinkingEffortValues = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+] as const satisfies readonly ThinkingEffort[];
 const outputFormatValues = ["text", "json", "csv"] as const satisfies readonly OutputFormat[];
 
 const nonEmptyStringSchema = z.string().min(1, { message: "must be a non-empty string" });
@@ -126,6 +134,15 @@ export const CONFIG_FIELDS = [
     schema: z.enum(thinkingEffortValues),
   },
   {
+    key: "maxPromptChars",
+    flags: "--max-prompt-chars <number>",
+    description: "Maximum prompt characters per analyzed file; defaults to an automatic model-aware budget",
+    env: "SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS",
+    kind: "number",
+    default: undefined,
+    schema: positiveIntegerSchema.optional(),
+  },
+  {
     key: "format",
     flags: "--format <format>",
     description: "Output format: text, json, or csv",
@@ -177,14 +194,17 @@ const apiKeysSchema = z
   })
   .strict();
 
-const configFieldSchemaShape = Object.fromEntries(
-  CONFIG_FIELDS.map((field) => [field.key, field.schema]),
-) as Record<keyof Omit<AppConfig, "apiKeys">, z.ZodTypeAny>;
+const configFieldSchemaShape = Object.fromEntries(CONFIG_FIELDS.map((field) => [field.key, field.schema])) as Record<
+  keyof Omit<AppConfig, "apiKeys">,
+  z.ZodTypeAny
+>;
 
-export const configSchema = z.object({
-  ...configFieldSchemaShape,
-  apiKeys: apiKeysSchema.default({}),
-}).strict();
+export const configSchema = z
+  .object({
+    ...configFieldSchemaShape,
+    apiKeys: apiKeysSchema.default({}),
+  })
+  .strict();
 
 export const partialConfigSchema = configSchema.deepPartial();
 
@@ -205,8 +225,6 @@ function toOptionName(flag: string): string {
   return flag
     .slice(2)
     .split("-")
-    .map((segment, index) =>
-      index === 0 ? segment : `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`,
-    )
+    .map((segment, index) => (index === 0 ? segment : `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`))
     .join("");
 }

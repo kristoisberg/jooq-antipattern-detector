@@ -62,19 +62,23 @@ describe("executeCli", () => {
   test("creates the parent directory automatically when --output is used", async () => {
     const calls: Array<{ type: "mkdir" | "writeFile"; path: string; payload?: string }> = [];
 
-    await executeCli("/tmp/project", { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } }, {
-      runAnalysis: async () => baseOutput,
-      mkdir: async (dir) => {
-        calls.push({ type: "mkdir", path: dir.toString() });
+    await executeCli(
+      "/tmp/project",
+      { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } },
+      {
+        runAnalysis: async () => baseOutput,
+        mkdir: async (dir) => {
+          calls.push({ type: "mkdir", path: dir.toString() });
+        },
+        stat: async (): Promise<Stats> => directoryStats,
+        writeFile: async (filePath, contents) => {
+          calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
+        },
+        writeStdout: () => {
+          throw new Error("stdout should not be used when output file is configured");
+        },
       },
-      stat: async (): Promise<Stats> => directoryStats,
-      writeFile: async (filePath, contents) => {
-        calls.push({ type: "writeFile", path: filePath.toString(), payload: contents.toString() });
-      },
-      writeStdout: () => {
-        throw new Error("stdout should not be used when output file is configured");
-      },
-    });
+    );
 
     expect(calls).toEqual([
       { type: "mkdir", path: `${process.cwd()}/reports` },
@@ -88,45 +92,57 @@ describe("executeCli", () => {
 
   test("throws a clear error when the input directory does not exist", async () => {
     await expect(
-      executeCli("/tmp/missing-project", { apiKeys: { anthropic: "test-key" } }, {
-        runAnalysis: async () => baseOutput,
-        mkdir: async () => undefined,
-        stat: async () => {
-          const error = new Error("missing");
-          Object.assign(error, { code: "ENOENT" });
-          throw error;
+      executeCli(
+        "/tmp/missing-project",
+        { apiKeys: { anthropic: "test-key" } },
+        {
+          runAnalysis: async () => baseOutput,
+          mkdir: async () => undefined,
+          stat: async () => {
+            const error = new Error("missing");
+            Object.assign(error, { code: "ENOENT" });
+            throw error;
+          },
+          writeFile: async () => undefined,
+          writeStdout: () => undefined,
         },
-        writeFile: async () => undefined,
-        writeStdout: () => undefined,
-      }),
+      ),
     ).rejects.toThrow("Input directory does not exist: /tmp/missing-project");
   });
 
   test("throws a clear error when the input path is not a directory", async () => {
     await expect(
-      executeCli("/tmp/not-a-directory", { apiKeys: { anthropic: "test-key" } }, {
-        runAnalysis: async () => baseOutput,
-        mkdir: async () => undefined,
-        stat: async (): Promise<Stats> => fileStats,
-        writeFile: async () => undefined,
-        writeStdout: () => undefined,
-      }),
+      executeCli(
+        "/tmp/not-a-directory",
+        { apiKeys: { anthropic: "test-key" } },
+        {
+          runAnalysis: async () => baseOutput,
+          mkdir: async () => undefined,
+          stat: async (): Promise<Stats> => fileStats,
+          writeFile: async () => undefined,
+          writeStdout: () => undefined,
+        },
+      ),
     ).rejects.toThrow("Input directory is not a directory: /tmp/not-a-directory");
   });
 
   test("config normalization resolves output paths before CLI writes files", async () => {
     let capturedOutputPath: string | undefined;
 
-    await executeCli("/tmp/project", { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } }, {
-      runAnalysis: async (_directory, config) => {
-        capturedOutputPath = config.output;
-        return baseOutput;
+    await executeCli(
+      "/tmp/project",
+      { output: "reports/findings.json", apiKeys: { anthropic: "test-key" } },
+      {
+        runAnalysis: async (_directory, config) => {
+          capturedOutputPath = config.output;
+          return baseOutput;
+        },
+        mkdir: async () => undefined,
+        stat: async (): Promise<Stats> => directoryStats,
+        writeFile: async () => undefined,
+        writeStdout: () => undefined,
       },
-      mkdir: async () => undefined,
-      stat: async (): Promise<Stats> => directoryStats,
-      writeFile: async () => undefined,
-      writeStdout: () => undefined,
-    });
+    );
 
     expect(capturedOutputPath).toBe(`${process.cwd()}/reports/findings.json`);
   });
@@ -135,10 +151,12 @@ describe("executeCli", () => {
     const program = createProgram();
     program.exitOverride();
 
-    await expect(program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug=false"], { from: "node" }))
-      .rejects.toThrow("unknown option '--debug=false'");
+    await expect(
+      program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug=false"], { from: "node" }),
+    ).rejects.toThrow("unknown option '--debug=false'");
 
-    await expect(program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug", "false"], { from: "node" }))
-      .rejects.toThrow("too many arguments");
+    await expect(
+      program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug", "false"], { from: "node" }),
+    ).rejects.toThrow("too many arguments");
   });
 });
