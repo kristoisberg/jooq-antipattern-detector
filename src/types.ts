@@ -5,7 +5,7 @@ export const antipatternNameSchema = z.enum([
   "Keyless Entry",
   "Rounding Errors",
   "31 Flavors",
-  "Poor Man’s Search Engine",
+  "Poor Man's Search Engine",
   "Implicit Columns",
   "Beware of the Unknown",
 ]);

@@ -1,6 +1,7 @@
 import pLimit from "p-limit";
 import { generateObject } from "ai";
 import type { LanguageModelV1 } from "ai";
+import { ZodError } from "zod";
 
 import type { AppConfig } from "./config.js";
 import type { FileCandidate } from "./file-discovery.js";
@@ -273,7 +274,65 @@ function getAnalysisAntipatterns(analysis: FileAnalysis): string[] {
 }
 
 function formatError(error: unknown): string {
+  const validationErrors = formatValidationErrors(error);
+
+  if (validationErrors) {
+    const baseMessage = error instanceof Error ? error.message : String(error);
+    return `${baseMessage} Validation errors: ${validationErrors}`;
+  }
+
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatValidationErrors(error: unknown): string | null {
+  const issues = extractValidationIssues(error);
+
+  if (!issues || issues.length === 0) {
+    return null;
+  }
+
+  return issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+      const receivedValue =
+        issue.receivedValue === undefined ? "" : ` Received value: ${JSON.stringify(issue.receivedValue)}`;
+      return `${path}: ${issue.message}${receivedValue}`;
+    })
+    .join("; ");
+}
+
+type ValidationIssue = {
+  path: Array<string | number>;
+  message: string;
+  receivedValue?: unknown;
+};
+
+function extractValidationIssues(error: unknown): ValidationIssue[] | null {
+  if (error instanceof ZodError) {
+    return error.issues.map((issue) => ({
+      path: issue.path,
+      message: issue.message,
+      receivedValue: getIssueReceivedValue(issue),
+    }));
+  }
+
+  if (error instanceof Error && error.cause) {
+    const nestedIssues = extractValidationIssues(error.cause);
+
+    if (nestedIssues) {
+      return nestedIssues;
+    }
+  }
+
+  return null;
+}
+
+function getIssueReceivedValue(issue: ZodError["issues"][number]): unknown {
+  if ("received" in issue) {
+    return issue.received;
+  }
+
+  return undefined;
 }
 
 function supportsThinkingEffort(providerId: string): boolean {

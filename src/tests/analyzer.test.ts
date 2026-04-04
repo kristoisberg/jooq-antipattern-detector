@@ -221,7 +221,14 @@ describe("analyzeFiles", () => {
         },
       },
     ]);
-    expect(debugMessages.some((message) => message.startsWith("[retry] b.java failed on attempt 1: ["))).toBe(true);
+    expect(
+      debugMessages.some(
+        (message) =>
+          message.includes("[retry] b.java failed on attempt 1:") &&
+          message.includes("Validation errors: occurrences.0.antipatternName: Invalid enum value.") &&
+          message.includes('Received value: "Not A Real Antipattern"'),
+      ),
+    ).toBe(true);
     expect(debugMessages).toContain("[analyzed] b.java (dml-dql, attempt 2)\n");
   });
 

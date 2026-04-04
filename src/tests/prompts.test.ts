@@ -9,7 +9,7 @@ describe("getPrompts", () => {
     expect(prompts.ddl).toContain("FILE_CONTENTS");
     expect(prompts.ddl).toContain("KEYS_CONTENTS");
     expect(prompts.dmlDql).toContain("FILE_CONTENTS");
-    expect(prompts.dmlDql).toContain("Poor Man’s Search Engine");
+    expect(prompts.dmlDql).toContain("Poor Man's Search Engine");
     expect(prompts.ddl).toContain("For every occurrence");
   });
 
