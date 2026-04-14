@@ -170,5 +170,5 @@ Each result includes:
 
 CSV output contains:
 
-- one row per antipattern occurrence in `localisation` mode with columns `Project`, `Antipattern`, `File`, `Line from`, `Line to`, `Explanation`
+- one row per antipattern occurrence in `localisation` mode with columns `Project`, `Antipattern`, `File`, `Line from`, `Line to`, `Code fragment`, `Explanation`
 - one row per `(file, antipattern)` pair in `classification` mode with columns `Project`, `Antipattern`, `File`

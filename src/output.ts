@@ -152,7 +152,7 @@ function renderClassificationCsvReport(results: FileAnalysis[], projectName: str
 
 function renderLocalisationCsvReport(results: FileAnalysis[], projectName: string): string[][] {
   return [
-    ["Project", "Antipattern", "File", "Line from", "Line to", "Explanation"],
+    ["Project", "Antipattern", "File", "Line from", "Line to", "Code fragment", "Explanation"],
     ...results.flatMap((result) =>
       result.error || !("occurrences" in result)
         ? []
@@ -162,6 +162,7 @@ function renderLocalisationCsvReport(results: FileAnalysis[], projectName: strin
             result.relativePath,
             String(occurrence.linesRangeStart),
             String(occurrence.linesRangeEnd),
+            occurrence.codeFragment,
             occurrence.explanation,
           ]),
     ),

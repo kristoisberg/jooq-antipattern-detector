@@ -148,9 +148,9 @@ describe("renderOutput", () => {
 
     expect(rendered).toBe(
       [
-        "Project,Antipattern,File,Line from,Line to,Explanation",
-        'my-project,ID Required,src/Alpha.java,10,12,"This table uses a generic ""id"" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key."',
-        'my-project,31 Flavors,src/Alpha.java,20,20,"This enum hard-codes allowed values in the schema, which makes changes harder to roll out. Move the values into a lookup table and reference it with a foreign key,',
+        "Project,Antipattern,File,Line from,Line to,Code fragment,Explanation",
+        'my-project,ID Required,src/Alpha.java,10,12,id BIGINT,"This table uses a generic ""id"" primary key, which hides the real business identifier. Rename the key to something domain-specific or promote an existing stable unique column to be the primary key."',
+        'my-project,31 Flavors,src/Alpha.java,20,20,status ENUM(...),"This enum hard-codes allowed values in the schema, which makes changes harder to roll out. Move the values into a lookup table and reference it with a foreign key,',
         'and escape ""quotes"" correctly."',
       ].join("\n"),
     );
@@ -169,7 +169,7 @@ describe("renderOutput", () => {
       "csv",
     );
 
-    expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Explanation");
+    expect(rendered).toBe("Project,Antipattern,File,Line from,Line to,Code fragment,Explanation");
   });
 
   test("renders classification text and csv output using per-file antipattern names", () => {
