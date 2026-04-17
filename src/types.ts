@@ -7,7 +7,7 @@ export const antipatternNameSchema = z.enum([
   "31 Flavors",
   "Poor Man's Search Engine",
   "Implicit Columns",
-  "Beware of the Unknown",
+  "Fear of the Unknown",
 ]);
 
 export type AntipatternName = z.infer<typeof antipatternNameSchema>;

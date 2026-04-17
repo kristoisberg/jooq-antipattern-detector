@@ -193,7 +193,7 @@ describe("renderOutput", () => {
           filePath: "/tmp/my-project/src/Beta.java",
           relativePath: "src/Beta.java",
           promptType: "dml-dql",
-          antipatterns: ["Beware of the Unknown"],
+          antipatterns: ["Fear of the Unknown"],
         },
       ],
     };
@@ -209,7 +209,7 @@ describe("renderOutput", () => {
     expect(renderedText).toContain("ID Required");
     expect(renderedText).toContain("31 Flavors");
     expect(renderedText).toContain("1 antipattern");
-    expect(renderedText).toContain("  • Beware of the Unknown");
+    expect(renderedText).toContain("  • Fear of the Unknown");
     expect(renderedText).not.toContain("Code        ");
     expect(renderedText).not.toContain("Explanation ");
     expect(renderedText).not.toContain("  ----------------------------------------");
@@ -220,7 +220,7 @@ describe("renderOutput", () => {
         "Project,Antipattern,File",
         "my-project,ID Required,src/Alpha.java",
         "my-project,31 Flavors,src/Alpha.java",
-        "my-project,Beware of the Unknown,src/Beta.java",
+        "my-project,Fear of the Unknown,src/Beta.java",
       ].join("\n"),
     );
   });

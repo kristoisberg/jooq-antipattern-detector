@@ -256,7 +256,7 @@ describe("analyzeFiles", () => {
 
         return {
           object: {
-            antipatterns: ["Beware of the Unknown"],
+            antipatterns: ["Fear of the Unknown"],
           },
           usage: {
             promptTokens: 5,
@@ -286,7 +286,7 @@ describe("analyzeFiles", () => {
         filePath: "/tmp/project/b.java",
         relativePath: "b.java",
         promptType: "dml-dql",
-        antipatterns: ["Beware of the Unknown"],
+        antipatterns: ["Fear of the Unknown"],
         usage: {
           inputTokens: 5,
           outputTokens: 1,
