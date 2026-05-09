@@ -76,7 +76,7 @@ export function createProgram(): Command {
   const program = new Command();
 
   program
-    .name("sql-antipattern-detector")
+    .name("jooq-antipattern-detector")
     .description("Detect SQL antipatterns in Java/jOOQ codebases with an LLM-backed analyzer.")
     .argument("<directory>", "Directory to scan recursively for Java files");
 

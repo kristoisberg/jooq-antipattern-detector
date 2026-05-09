@@ -1,15 +1,15 @@
 {
-  "name": "sql-antipattern-detector",
+  "name": "jooq-antipattern-detector",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.2.21",
   "bin": {
-    "sql-antipattern-detector": "./src/cli.ts"
+    "jooq-antipattern-detector": "./src/cli.ts"
   },
   "scripts": {
-    "build": "bun build ./src/cli.ts --target bun --outfile ./dist/sql-antipattern-detector",
-    "build:native": "bun build ./src/cli.ts --compile --outfile ./dist/sql-antipattern-detector",
+    "build": "bun build ./src/cli.ts --target bun --outfile ./dist/jooq-antipattern-detector",
+    "build:native": "bun build ./src/cli.ts --compile --outfile ./dist/jooq-antipattern-detector",
     "check": "tsc --noEmit",
     "format": "biome format . --write",
     "format:check": "biome format .",

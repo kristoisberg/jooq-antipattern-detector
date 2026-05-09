@@ -93,7 +93,7 @@ function resolveConfigFile(cliConfigFile: string | undefined, deps: ResolveConfi
   }
 
   return {
-    path: path.join(deps.homedir(), ".sql-antipattern-detector.yml"),
+    path: path.join(deps.homedir(), ".jooq-antipattern-detector.yml"),
     explicit: false,
   };
 }

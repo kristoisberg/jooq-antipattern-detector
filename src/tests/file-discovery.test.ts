@@ -81,7 +81,7 @@ describe("discoverApplicableFiles", () => {
 });
 
 async function createFixtureDirectory(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "detecty-thingy-"));
+  const directory = await mkdtemp(path.join(os.tmpdir(), "detector-"));
   temporaryDirectories.push(directory);
   return directory;
 }

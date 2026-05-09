@@ -95,7 +95,7 @@ describe("resolveConfig", () => {
   });
 
   test("loads values from a YAML config file", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-config-"));
+    const directory = mkdtempSync(path.join(tmpdir(), "detector-config-"));
     const configFile = path.join(directory, "config.yml");
 
     try {
@@ -138,7 +138,7 @@ describe("resolveConfig", () => {
   });
 
   test("applies environment values over YAML config values", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-config-"));
+    const directory = mkdtempSync(path.join(tmpdir(), "detector-config-"));
     const configFile = path.join(directory, "config.yml");
 
     try {
@@ -166,7 +166,7 @@ describe("resolveConfig", () => {
   });
 
   test("applies CLI values over environment and YAML config values", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-config-"));
+    const directory = mkdtempSync(path.join(tmpdir(), "detector-config-"));
     const configFile = path.join(directory, "config.yml");
 
     try {
@@ -212,8 +212,8 @@ describe("resolveConfig", () => {
   });
 
   test("uses the home-directory YAML config file when no location is provided", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-home-"));
-    const configFile = path.join(directory, ".sql-antipattern-detector.yml");
+    const directory = mkdtempSync(path.join(tmpdir(), "detector-home-"));
+    const configFile = path.join(directory, ".jooq-antipattern-detector.yml");
 
     try {
       writeFileSync(configFile, ["format: csv", ""].join("\n"), "utf8");
@@ -323,7 +323,7 @@ describe("resolveConfig", () => {
   });
 
   test("throws when the YAML config file is invalid", () => {
-    const directory = mkdtempSync(path.join(tmpdir(), "detecty-config-"));
+    const directory = mkdtempSync(path.join(tmpdir(), "detector-config-"));
     const configFile = path.join(directory, "invalid.yml");
 
     try {

@@ -26,10 +26,10 @@ Use a model name with one of these prefixes:
 Examples:
 
 ```bash
-sql-antipattern-detector ./my-project --model anthropic:claude-opus-4-5
-sql-antipattern-detector ./my-project --model anthropic:claude-3-7-sonnet-latest
-sql-antipattern-detector ./my-project --model openai:gpt-4.1
-sql-antipattern-detector ./my-project --model openrouter:openai/gpt-4.1
+jooq-antipattern-detector ./my-project --model anthropic:claude-opus-4-5
+jooq-antipattern-detector ./my-project --model anthropic:claude-3-7-sonnet-latest
+jooq-antipattern-detector ./my-project --model openai:gpt-4.1
+jooq-antipattern-detector ./my-project --model openrouter:openai/gpt-4.1
 ```
 
 API keys can be provided either as CLI options or environment variables:
@@ -88,7 +88,7 @@ CLI parameter -> environment variable -> YAML config file -> default
 Configuration file lookup:
 
 - explicit path from `--config-file <file>`
-- otherwise `~/.sql-antipattern-detector.yml` if it exists
+- otherwise `~/.jooq-antipattern-detector.yml` if it exists
 
 Example YAML config:
 
@@ -144,7 +144,7 @@ OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:o
 bun run build:native
 ```
 
-Output: `dist/sql-antipattern-detector`
+Output: `dist/jooq-antipattern-detector`
 
 ## Output formats
 

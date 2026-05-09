@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "sql-antipattern-detector",
+      "name": "jooq-antipattern-detector",
       "dependencies": {
         "@ai-sdk/anthropic": "^1.2.12",
         "@ai-sdk/google": "^1.2.18",

@@ -43,7 +43,7 @@ describe("createProgram", () => {
   test("creates the configured command program", () => {
     const program = createProgram();
 
-    expect(program.name()).toBe("sql-antipattern-detector");
+    expect(program.name()).toBe("jooq-antipattern-detector");
     expect(program.description()).toBe("Detect SQL antipatterns in Java/jOOQ codebases with an LLM-backed analyzer.");
     expect(program.options.some((option) => option.long === "--format")).toBe(true);
   });
@@ -152,11 +152,11 @@ describe("executeCli", () => {
     program.exitOverride();
 
     await expect(
-      program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug=false"], { from: "node" }),
+      program.parseAsync(["node", "jooq-antipattern-detector", "/tmp/project", "--debug=false"], { from: "node" }),
     ).rejects.toThrow("unknown option '--debug=false'");
 
     await expect(
-      program.parseAsync(["node", "sql-antipattern-detector", "/tmp/project", "--debug", "false"], { from: "node" }),
+      program.parseAsync(["node", "jooq-antipattern-detector", "/tmp/project", "--debug", "false"], { from: "node" }),
     ).rejects.toThrow("too many arguments");
   });
 });
