@@ -12,16 +12,16 @@ describe("resolveConfig", () => {
     const config = resolveConfig(
       {},
       {
-        SQL_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
-        SQL_ANTIPATTERN_DETECTOR_MODE: "classification",
-        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
-        SQL_ANTIPATTERN_DETECTOR_RETRIES: "3",
-        SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
-        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
-        SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
-        SQL_ANTIPATTERN_DETECTOR_FORMAT: "csv",
-        SQL_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+        JOOQ_ANTIPATTERN_DETECTOR_MODEL: "openrouter:openai/gpt-4.1",
+        JOOQ_ANTIPATTERN_DETECTOR_MODE: "classification",
+        JOOQ_ANTIPATTERN_DETECTOR_CONCURRENCY: "4",
+        JOOQ_ANTIPATTERN_DETECTOR_RETRIES: "3",
+        JOOQ_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
+        JOOQ_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
+        JOOQ_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
+        JOOQ_ANTIPATTERN_DETECTOR_FORMAT: "csv",
+        JOOQ_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
+        JOOQ_ANTIPATTERN_DETECTOR_DEBUG: "true",
         OPENROUTER_API_KEY: "env-key",
       },
     );
@@ -52,11 +52,11 @@ describe("resolveConfig", () => {
         },
       },
       {
-        SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
-        SQL_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.9",
-        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
-        SQL_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
-        SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+        JOOQ_ANTIPATTERN_DETECTOR_CONCURRENCY: "2",
+        JOOQ_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.9",
+        JOOQ_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
+        JOOQ_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
+        JOOQ_ANTIPATTERN_DETECTOR_DEBUG: "true",
         OPENAI_API_KEY: "env-key",
       },
     );
@@ -73,7 +73,7 @@ describe("resolveConfig", () => {
     const config = resolveConfig(
       {},
       {
-        SQL_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
+        JOOQ_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "minimal",
       },
     );
 
@@ -151,8 +151,8 @@ describe("resolveConfig", () => {
       const config = resolveConfig(
         { configFile },
         {
-          SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "9",
-          SQL_ANTIPATTERN_DETECTOR_DEBUG: "true",
+          JOOQ_ANTIPATTERN_DETECTOR_CONCURRENCY: "9",
+          JOOQ_ANTIPATTERN_DETECTOR_DEBUG: "true",
           OPENAI_API_KEY: "env-key",
         },
       );
@@ -175,8 +175,8 @@ describe("resolveConfig", () => {
       const config = resolveConfig(
         { configFile, concurrency: 7, debug: true },
         {
-          SQL_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
-          SQL_ANTIPATTERN_DETECTOR_DEBUG: "false",
+          JOOQ_ANTIPATTERN_DETECTOR_CONCURRENCY: "5",
+          JOOQ_ANTIPATTERN_DETECTOR_DEBUG: "false",
         },
       );
 
@@ -193,11 +193,11 @@ describe("resolveConfig", () => {
     expect(config.debug).toBe(true);
   });
 
-  test("ignores SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE when set", () => {
+  test("ignores JOOQ_ANTIPATTERN_DETECTOR_CONFIG_FILE when set", () => {
     const config = resolveConfig(
       {},
       {
-        SQL_ANTIPATTERN_DETECTOR_CONFIG_FILE: "/tmp/ignored-detector.yml",
+        JOOQ_ANTIPATTERN_DETECTOR_CONFIG_FILE: "/tmp/ignored-detector.yml",
       },
       {
         existsSync: () => false,

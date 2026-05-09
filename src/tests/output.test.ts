@@ -67,7 +67,7 @@ describe("renderOutput", () => {
       ),
     );
 
-    expect(rendered).toContain("SQL Antipattern Detector");
+    expect(rendered).toContain("jOOQ Antipattern Detector");
     expect(rendered).toContain("google:gemini-2.5-pro");
     expect(rendered).toContain("localisation");
     expect(rendered).toContain("No applicable Java files were found.");

@@ -37,7 +37,7 @@ export function renderTextReport(output: CliOutput): string {
   const findings = output.results.filter((result) => getFindingCount(result) > 0);
   const failures = output.results.filter((result) => result.error);
 
-  lines.push(style.bold(style.cyan("SQL Antipattern Detector")));
+  lines.push(style.bold(style.cyan("jOOQ Antipattern Detector")));
   lines.push(`${style.dim("Model")}      ${output.model}`);
   lines.push(`${style.dim("Mode")}       ${output.mode}`);
   lines.push(`${style.dim("Directory")}  ${output.rootDirectory}`);
