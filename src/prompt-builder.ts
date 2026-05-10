@@ -67,34 +67,18 @@ function truncateNumberedSource(numberedContents: string, maxChars: number): str
     return numberedContents.slice(0, maxChars);
   }
 
-  let headCount = 1;
-  let tailCount = 1;
   let best = truncatePlainText(numberedContents, maxChars);
 
-  while (headCount + tailCount < lines.length) {
-    const omittedLines = lines.length - headCount - tailCount;
+  for (let headCount = 1; headCount < lines.length; headCount += 1) {
+    const omittedLines = lines.length - headCount;
     const omissionMarker = `... [${omittedLines} lines omitted due to prompt size] ...`;
-    const candidate = [...lines.slice(0, headCount), omissionMarker, ...lines.slice(lines.length - tailCount)].join(
-      "\n",
-    );
+    const candidate = [...lines.slice(0, headCount), omissionMarker].join("\n");
 
     if (candidate.length > maxChars) {
-      if (tailCount <= headCount) {
-        tailCount += 1;
-      } else {
-        headCount += 1;
-      }
-
       continue;
     }
 
     best = candidate;
-
-    if (tailCount <= headCount) {
-      tailCount += 1;
-    } else {
-      headCount += 1;
-    }
   }
 
   return best;

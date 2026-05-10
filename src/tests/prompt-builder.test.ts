@@ -42,7 +42,7 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("1: query()");
   });
 
-  test("truncates oversized source while preserving head and tail line numbers", () => {
+  test("truncates oversized source by cutting only from the tail", () => {
     const candidate: FileCandidate = {
       absolutePath: "/tmp/project/Large.java",
       relativePath: "Large.java",
@@ -55,7 +55,8 @@ describe("buildPrompt", () => {
 
     expect(prompt.length).toBeLessThanOrEqual(260);
     expect(prompt).toContain("1: line 1");
-    expect(prompt).toContain("40: line 40");
+    expect(prompt).toContain("2: line 2");
+    expect(prompt).not.toContain("40: line 40");
     expect(prompt).toContain("lines omitted due to prompt size");
   });
 
