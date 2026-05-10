@@ -4,6 +4,7 @@ import type { LanguageModelV1 } from "ai";
 import { analyzeFiles, type AnalyzerDeps, type AnalyzeOptions } from "../analyzer.js";
 import type { FileCandidate } from "../file-discovery.js";
 import type { PromptSet } from "../prompts.js";
+import { createAnalysisResponseSchemas } from "../types.js";
 
 const prompts: PromptSet = {
   ddl: "DDL FILE_CONTENTS KEYS_CONTENTS",
@@ -305,6 +306,59 @@ describe("analyzeFiles", () => {
       inputTokens: 8,
       outputTokens: 3,
       totalTokens: 11,
+    });
+  });
+
+  test("validates model output with custom antipattern names", async () => {
+    let attempts = 0;
+    const schemas = createAnalysisResponseSchemas(["Custom Pattern"]);
+    const deps: AnalyzerDeps = {
+      createModel: () => ({ provider: "fake-model" }) as LanguageModelV1,
+      generateAnalysisObject: async () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return {
+            object: {
+              occurrences: [
+                {
+                  antipatternName: "ID Required",
+                  linesRangeStart: 1,
+                  linesRangeEnd: 1,
+                  codeFragment: "id",
+                  explanation: "default names are not valid for this custom pack",
+                },
+              ],
+            },
+          };
+        }
+
+        return {
+          object: {
+            occurrences: [
+              {
+                antipatternName: "Custom Pattern",
+                linesRangeStart: 1,
+                linesRangeEnd: 1,
+                codeFragment: "custom",
+                explanation: "valid custom finding",
+              },
+            ],
+          },
+        };
+      },
+      writeDebug: () => {},
+    };
+
+    const result = await analyzeFiles([candidates[0]], prompts, options, deps, schemas);
+
+    expect(attempts).toBe(2);
+    expect(result.analyses[0]).toMatchObject({
+      occurrences: [
+        {
+          antipatternName: "Custom Pattern",
+        },
+      ],
     });
   });
 

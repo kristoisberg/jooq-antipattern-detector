@@ -19,6 +19,7 @@ describe("resolveConfig", () => {
         JOOQ_ANTIPATTERN_DETECTOR_TEMPERATURE: "0.7",
         JOOQ_ANTIPATTERN_DETECTOR_THINKING_EFFORT: "high",
         JOOQ_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS: "321000",
+        JOOQ_ANTIPATTERN_DETECTOR_PROMPTS_FILE: "prompt-pack.json",
         JOOQ_ANTIPATTERN_DETECTOR_FORMAT: "csv",
         JOOQ_ANTIPATTERN_DETECTOR_OUTPUT: "reports/findings.json",
         JOOQ_ANTIPATTERN_DETECTOR_DEBUG: "true",
@@ -33,6 +34,7 @@ describe("resolveConfig", () => {
     expect(config.temperature).toBe(0.7);
     expect(config.thinkingEffort).toBe("high");
     expect(config.maxPromptChars).toBe(321000);
+    expect(config.promptsFile).toBe(`${process.cwd()}/prompt-pack.json`);
     expect(config.format).toBe("csv");
     expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
     expect(config.debug).toBe(true);
@@ -90,6 +92,7 @@ describe("resolveConfig", () => {
     expect(config.temperature).toBe(0);
     expect(config.thinkingEffort).toBe("none");
     expect(config.maxPromptChars).toBeUndefined();
+    expect(config.promptsFile).toBeUndefined();
     expect(config.format).toBe("text");
     expect(config.debug).toBe(false);
   });
@@ -109,6 +112,7 @@ describe("resolveConfig", () => {
           "temperature: 0.4",
           "thinkingEffort: medium",
           "maxPromptChars: 654321",
+          "promptsFile: prompt-pack.json",
           "format: json",
           "output: reports/findings.json",
           "debug: true",
@@ -128,6 +132,7 @@ describe("resolveConfig", () => {
       expect(config.temperature).toBe(0.4);
       expect(config.thinkingEffort).toBe("medium");
       expect(config.maxPromptChars).toBe(654321);
+      expect(config.promptsFile).toBe(`${process.cwd()}/prompt-pack.json`);
       expect(config.format).toBe("json");
       expect(config.output).toBe(`${process.cwd()}/reports/findings.json`);
       expect(config.debug).toBe(true);
@@ -247,6 +252,7 @@ describe("resolveConfig", () => {
       "--temperature",
       "--thinking-effort",
       "--max-prompt-chars",
+      "--prompts-file",
       "--format",
       "--output",
       "--debug",
@@ -282,6 +288,7 @@ describe("resolveConfig", () => {
       temperature: "0.3",
       thinkingEffort: "xhigh",
       maxPromptChars: "123456",
+      promptsFile: "prompt-pack.json",
       debug: true,
       configFile: "/tmp/detector.yml",
       openaiApiKey: "cli-key",
@@ -292,6 +299,7 @@ describe("resolveConfig", () => {
       temperature: 0.3,
       thinkingEffort: "xhigh",
       maxPromptChars: 123456,
+      promptsFile: "prompt-pack.json",
       debug: true,
       configFile: "/tmp/detector.yml",
       apiKeys: {

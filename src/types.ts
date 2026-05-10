@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const antipatternNameSchema = z.enum([
+export const DEFAULT_ANTIPATTERN_NAMES = [
   "ID Required",
   "Keyless Entry",
   "Rounding Errors",
@@ -8,25 +8,42 @@ export const antipatternNameSchema = z.enum([
   "Poor Man's Search Engine",
   "Implicit Columns",
   "Fear of the Unknown",
-]);
+] as const;
 
-export type AntipatternName = z.infer<typeof antipatternNameSchema>;
+export type AntipatternName = string;
 
-export const antipatternOccurrenceSchema = z.object({
-  antipatternName: antipatternNameSchema,
-  linesRangeStart: z.number().int().positive(),
-  linesRangeEnd: z.number().int().positive(),
-  codeFragment: z.string(),
-  explanation: z.string(),
-});
+export type AnalysisResponseSchemas = ReturnType<typeof createAnalysisResponseSchemas>;
 
-export const localisationAnalysisResponseSchema = z.object({
-  occurrences: z.array(antipatternOccurrenceSchema),
-});
+export function createAnalysisResponseSchemas(antipatternNames: readonly string[]) {
+  const antipatternNameSchema = z.enum(toNonEmptyTuple(antipatternNames));
+  const antipatternOccurrenceSchema = z.object({
+    antipatternName: antipatternNameSchema,
+    linesRangeStart: z.number().int().positive(),
+    linesRangeEnd: z.number().int().positive(),
+    codeFragment: z.string(),
+    explanation: z.string(),
+  });
+  const localisationAnalysisResponseSchema = z.object({
+    occurrences: z.array(antipatternOccurrenceSchema),
+  });
+  const classificationAnalysisResponseSchema = z.object({
+    antipatterns: z.array(antipatternNameSchema),
+  });
 
-export const classificationAnalysisResponseSchema = z.object({
-  antipatterns: z.array(antipatternNameSchema),
-});
+  return {
+    antipatternNameSchema,
+    antipatternOccurrenceSchema,
+    localisationAnalysisResponseSchema,
+    classificationAnalysisResponseSchema,
+  };
+}
+
+const defaultAnalysisResponseSchemas = createAnalysisResponseSchemas(DEFAULT_ANTIPATTERN_NAMES);
+
+export const antipatternNameSchema = defaultAnalysisResponseSchemas.antipatternNameSchema;
+export const antipatternOccurrenceSchema = defaultAnalysisResponseSchemas.antipatternOccurrenceSchema;
+export const localisationAnalysisResponseSchema = defaultAnalysisResponseSchemas.localisationAnalysisResponseSchema;
+export const classificationAnalysisResponseSchema = defaultAnalysisResponseSchemas.classificationAnalysisResponseSchema;
 
 export type AntipatternOccurrence = z.infer<typeof antipatternOccurrenceSchema>;
 export type LocalisationAnalysisResponse = z.infer<typeof localisationAnalysisResponseSchema>;
@@ -67,3 +84,11 @@ export type RunSummary = {
   outputTokens: number;
   totalTokens: number;
 };
+
+function toNonEmptyTuple(values: readonly string[]): [string, ...string[]] {
+  if (values.length === 0) {
+    throw new Error("At least one antipattern name is required");
+  }
+
+  return values as [string, ...string[]];
+}

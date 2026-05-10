@@ -198,20 +198,23 @@ function normalizeOutputPathInConfig(value: unknown): unknown {
     return value;
   }
 
-  if (!("output" in value)) {
+  if (!("output" in value) && !("promptsFile" in value)) {
     return value;
   }
 
-  const outputValue = (value as { output?: unknown }).output;
+  const { output, promptsFile } = value as { output?: unknown; promptsFile?: unknown };
 
-  if (typeof outputValue !== "string" || outputValue.length === 0) {
-    return value;
+  const normalized = { ...value };
+
+  if (typeof output === "string" && output.length > 0) {
+    Object.assign(normalized, { output: path.resolve(output) });
   }
 
-  return {
-    ...value,
-    output: path.resolve(outputValue),
-  };
+  if (typeof promptsFile === "string" && promptsFile.length > 0) {
+    Object.assign(normalized, { promptsFile: path.resolve(promptsFile) });
+  }
+
+  return normalized;
 }
 
 function parseEnvValue(rawValue: string, kind: "string" | "number" | "boolean"): string | number | boolean {

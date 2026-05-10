@@ -16,6 +16,7 @@ export type AppConfig = {
   temperature: number;
   thinkingEffort: ThinkingEffort;
   maxPromptChars?: number;
+  promptsFile?: string;
   format: OutputFormat;
   output?: string;
   debug: boolean;
@@ -143,6 +144,15 @@ export const CONFIG_FIELDS = [
     schema: positiveIntegerSchema.optional(),
   },
   {
+    key: "promptsFile",
+    flags: "--prompts-file <file>",
+    description: "Path to a JSON prompt pack file; defaults to embedded prompts",
+    env: "JOOQ_ANTIPATTERN_DETECTOR_PROMPTS_FILE",
+    kind: "string",
+    default: undefined,
+    schema: nonEmptyStringSchema.optional(),
+  },
+  {
     key: "format",
     flags: "--format <format>",
     description: "Output format: text, json, or csv",
@@ -214,7 +224,7 @@ export const defaultConfig = {
 } as AppConfig;
 
 function normalizeDefaultValue(key: string, value: unknown): unknown {
-  if (key === "output" && typeof value === "string") {
+  if ((key === "output" || key === "promptsFile") && typeof value === "string") {
     return path.resolve(value);
   }
 

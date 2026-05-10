@@ -4,7 +4,8 @@ import { analyzeFiles, type AnalyzeOptions } from "./analyzer.js";
 import type { AppConfig } from "./config.js";
 import { discoverApplicableFiles } from "./file-discovery.js";
 import type { CliOutput } from "./output.js";
-import { getPrompts } from "./prompts.js";
+import { loadPromptPack } from "./prompts.js";
+import { createAnalysisResponseSchemas } from "./types.js";
 import type { FileAnalysis, RunSummary } from "./types.js";
 
 export function buildAnalyzeOptions(config: AppConfig): AnalyzeOptions {
@@ -41,9 +42,17 @@ export function createCliOutput(
 
 export async function runAnalysis(directory: string, config: AppConfig): Promise<CliOutput> {
   const rootDirectory = path.resolve(directory);
-  const prompts = getPrompts(config.mode);
+  const promptPack = loadPromptPack(config.promptsFile);
+  const prompts = promptPack.prompts[config.mode];
+  const schemas = createAnalysisResponseSchemas(promptPack.antipatterns);
   const discovery = await discoverApplicableFiles(rootDirectory);
-  const { analyses, summary } = await analyzeFiles(discovery.candidates, prompts, buildAnalyzeOptions(config));
+  const { analyses, summary } = await analyzeFiles(
+    discovery.candidates,
+    prompts,
+    buildAnalyzeOptions(config),
+    undefined,
+    schemas,
+  );
 
   summary.scannedJavaFiles = discovery.allJavaFiles.length;
 

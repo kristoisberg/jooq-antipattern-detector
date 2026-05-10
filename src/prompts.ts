@@ -1,6 +1,28 @@
+import { readFileSync } from "node:fs";
+
+import { z } from "zod";
+
+import { DEFAULT_ANTIPATTERN_NAMES } from "./types.js";
+
 export type PromptSet = {
   ddl: string;
   dmlDql: string;
+};
+
+export type PromptPack = {
+  antipatterns: string[];
+  prompts: {
+    localisation: PromptSet;
+    classification: PromptSet;
+  };
+};
+
+type PromptPackLoaderDeps = {
+  readFileSync: (filePath: string, encoding: BufferEncoding) => string;
+};
+
+const defaultPromptPackLoaderDeps: PromptPackLoaderDeps = {
+  readFileSync,
 };
 
 const LOCALISATION_PROMPTS: PromptSet = {
@@ -75,6 +97,96 @@ FILE_CONTENTS
 `,
 };
 
+export const DEFAULT_PROMPT_PACK: PromptPack = {
+  antipatterns: [...DEFAULT_ANTIPATTERN_NAMES],
+  prompts: {
+    localisation: LOCALISATION_PROMPTS,
+    classification: CLASSIFICATION_PROMPTS,
+  },
+};
+
 export function getPrompts(mode: "localisation" | "classification" = "localisation"): PromptSet {
-  return mode === "classification" ? CLASSIFICATION_PROMPTS : LOCALISATION_PROMPTS;
+  return DEFAULT_PROMPT_PACK.prompts[mode];
+}
+
+export function loadPromptPack(
+  promptsFile: string | undefined,
+  deps: PromptPackLoaderDeps = defaultPromptPackLoaderDeps,
+): PromptPack {
+  if (!promptsFile) {
+    return DEFAULT_PROMPT_PACK;
+  }
+
+  let contents: string;
+
+  try {
+    contents = deps.readFileSync(promptsFile, "utf8");
+  } catch (error) {
+    throw new Error(
+      `Failed to read prompts file at ${promptsFile}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse JSON prompts file at ${promptsFile}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  try {
+    return promptPackSchema.parse(parsed);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0];
+      const path = issue?.path.length ? `${issue.path.join(".")}: ` : "";
+      throw new Error(`Invalid prompts file at ${promptsFile}: ${path}${issue?.message ?? "unknown error"}`);
+    }
+
+    throw error;
+  }
+}
+
+const promptSetSchema = z.object({
+  ddl: promptTemplateSchema("ddl"),
+  dmlDql: promptTemplateSchema("dmlDql"),
+});
+
+const promptPackSchema = z
+  .object({
+    antipatterns: z
+      .array(z.string().min(1, { message: "must be a non-empty string" }))
+      .min(1, { message: "must contain at least one antipattern" })
+      .superRefine((antipatterns, ctx) => {
+        const seen = new Set<string>();
+
+        antipatterns.forEach((antipattern, index) => {
+          if (seen.has(antipattern)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [index],
+              message: "must be unique",
+            });
+          }
+
+          seen.add(antipattern);
+        });
+      }),
+    prompts: z.object({
+      localisation: promptSetSchema,
+      classification: promptSetSchema,
+    }),
+  })
+  .strict();
+
+function promptTemplateSchema(templateName: string): z.ZodType<string> {
+  return z
+    .string()
+    .min(1, { message: "must be a non-empty string" })
+    .refine((template) => template.includes("FILE_CONTENTS"), {
+      message: `${templateName} must contain FILE_CONTENTS`,
+    });
 }

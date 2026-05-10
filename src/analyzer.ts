@@ -9,10 +9,11 @@ import { createModel, parseModelIdentifier, resolvePromptCharacterBudget } from 
 import { buildPrompt } from "./prompt-builder.js";
 import type { PromptSet } from "./prompts.js";
 import {
-  classificationAnalysisResponseSchema,
-  localisationAnalysisResponseSchema,
+  createAnalysisResponseSchemas,
+  type AnalysisResponseSchemas,
   type AnalysisUsage,
   type ClassificationAnalysisResponse,
+  DEFAULT_ANTIPATTERN_NAMES,
   type AntipatternName,
   type FileAnalysis,
   type RunSummary,
@@ -48,13 +49,14 @@ export type AnalyzerDeps = {
     mode: AppConfig["mode"],
     temperature: AppConfig["temperature"],
     thinkingEffort: AppConfig["thinkingEffort"],
+    schemas: AnalysisResponseSchemas,
   ) => AnalysisObjectResult;
   writeDebug: (message: string) => void;
 };
 
 const defaultAnalyzerDeps: AnalyzerDeps = {
   createModel,
-  generateAnalysisObject: (model, prompt, providerId, mode, temperature, thinkingEffort) => {
+  generateAnalysisObject: (model, prompt, providerId, mode, temperature, thinkingEffort, schemas) => {
     const sharedOptions = {
       model,
       temperature,
@@ -73,13 +75,13 @@ const defaultAnalyzerDeps: AnalyzerDeps = {
     if (mode === "classification") {
       return generateObject({
         ...sharedOptions,
-        schema: classificationAnalysisResponseSchema,
+        schema: schemas.classificationAnalysisResponseSchema,
       });
     }
 
     return generateObject({
       ...sharedOptions,
-      schema: localisationAnalysisResponseSchema,
+      schema: schemas.localisationAnalysisResponseSchema,
     });
   },
   writeDebug: (message) => {
@@ -92,6 +94,7 @@ export async function analyzeFiles(
   prompts: PromptSet,
   options: AnalyzeOptions,
   deps: AnalyzerDeps = defaultAnalyzerDeps,
+  schemas: AnalysisResponseSchemas = createAnalysisResponseSchemas(DEFAULT_ANTIPATTERN_NAMES),
 ): Promise<{ analyses: FileAnalysis[]; summary: RunSummary }> {
   const model = deps.createModel(options.model, options.apiKeys);
   const providerId = parseModelIdentifier(options.model).providerId;
@@ -103,7 +106,7 @@ export async function analyzeFiles(
       limit(async () => {
         const prompt = buildPrompt(candidate, prompts, promptCharacterBudget);
 
-        return analyzeWithRetry(model, providerId, candidate, prompt, options, deps).catch((error) =>
+        return analyzeWithRetry(model, providerId, candidate, prompt, schemas, options, deps).catch((error) =>
           buildFailedAnalysis(candidate, error, options.mode),
         );
       }),
@@ -148,6 +151,7 @@ async function analyzeWithRetry(
   providerId: string,
   candidate: FileCandidate,
   prompt: string,
+  schemas: AnalysisResponseSchemas,
   options: AnalyzeOptions,
   deps: AnalyzerDeps,
 ): Promise<FileAnalysis> {
@@ -162,8 +166,9 @@ async function analyzeWithRetry(
         options.mode,
         options.temperature,
         options.thinkingEffort,
+        schemas,
       );
-      const analysis = buildSuccessfulAnalysis(candidate, result.object, result.usage, options.mode);
+      const analysis = buildSuccessfulAnalysis(candidate, result.object, result.usage, options.mode, schemas);
 
       if (options.debug) {
         deps.writeDebug(`[analyzed] ${candidate.relativePath} (${candidate.promptType}, attempt ${attempt + 1})\n`);
@@ -192,6 +197,7 @@ function buildSuccessfulAnalysis(
       }
     | undefined,
   mode: AppConfig["mode"],
+  schemas: AnalysisResponseSchemas,
 ): FileAnalysis {
   const baseAnalysis = {
     filePath: candidate.absolutePath,
@@ -205,7 +211,7 @@ function buildSuccessfulAnalysis(
   };
 
   if (mode === "classification") {
-    const validatedObject = classificationAnalysisResponseSchema.parse(object);
+    const validatedObject = schemas.classificationAnalysisResponseSchema.parse(object);
 
     return {
       ...baseAnalysis,
@@ -213,7 +219,7 @@ function buildSuccessfulAnalysis(
     };
   }
 
-  const validatedObject = localisationAnalysisResponseSchema.parse(object);
+  const validatedObject = schemas.localisationAnalysisResponseSchema.parse(object);
 
   return {
     ...baseAnalysis,

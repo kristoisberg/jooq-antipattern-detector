@@ -75,6 +75,7 @@ bun run src/cli.ts ./path/to/project --output reports/findings.json --format jso
 bun run src/cli.ts ./path/to/project --temperature 0.2
 bun run src/cli.ts ./path/to/project --model openai:o3-mini --thinking-effort high
 bun run src/cli.ts ./path/to/project --max-prompt-chars 150000
+bun run src/cli.ts ./path/to/project --prompts-file ./prompt-pack.json
 bun run src/cli.ts ./path/to/project --mode classification --format csv
 bun run src/cli.ts ./path/to/project --concurrency 4 --retries 3 --debug
 ```
@@ -100,6 +101,7 @@ retries: 3
 temperature: 0.0
 thinkingEffort: high
 maxPromptChars: 150000
+promptsFile: ./prompt-pack.json
 format: json
 output: reports/findings.json
 debug: false
@@ -116,6 +118,7 @@ Environment variables:
 - `JOOQ_ANTIPATTERN_DETECTOR_TEMPERATURE`
 - `JOOQ_ANTIPATTERN_DETECTOR_THINKING_EFFORT`
 - `JOOQ_ANTIPATTERN_DETECTOR_MAX_PROMPT_CHARS`
+- `JOOQ_ANTIPATTERN_DETECTOR_PROMPTS_FILE`
 - `JOOQ_ANTIPATTERN_DETECTOR_FORMAT`
 - `JOOQ_ANTIPATTERN_DETECTOR_OUTPUT`
 - `JOOQ_ANTIPATTERN_DETECTOR_DEBUG`
@@ -137,6 +140,28 @@ OPENROUTER_API_KEY=... bun run src/cli.ts ./path/to/project --model openrouter:o
 `max-prompt-chars` sets a hard cap on prompt size per file. When omitted, the tool uses a conservative automatic budget based on the configured model when it recognizes the model family, and otherwise falls back to a default cap.
 
 `mode` accepts `localisation` or `classification`. `localisation` is the default and keeps the current occurrence-level behavior. `classification` returns only the distinct antipattern types present in each file.
+
+`prompts-file` points to a JSON prompt pack. When omitted, the embedded default prompts are used, so native binary distribution remains self-contained. A custom prompt pack fully replaces the embedded prompts and controls the antipattern names accepted in model output.
+
+Example prompt pack:
+
+```json
+{
+  "antipatterns": ["Custom Pattern"],
+  "prompts": {
+    "localisation": {
+      "ddl": "Analyze this DDL-oriented Java class for Custom Pattern.\n\n<analyzed_class>\nFILE_CONTENTS\n</analyzed_class>\n\n<key_definitions_for_reference>\nKEYS_CONTENTS\n</key_definitions_for_reference>",
+      "dmlDql": "Analyze this query-oriented Java class for Custom Pattern.\n\n<analyzed_class>\nFILE_CONTENTS\n</analyzed_class>"
+    },
+    "classification": {
+      "ddl": "Return only the distinct custom antipattern names present in this DDL-oriented Java class.\n\n<analyzed_class>\nFILE_CONTENTS\n</analyzed_class>\n\n<key_definitions_for_reference>\nKEYS_CONTENTS\n</key_definitions_for_reference>",
+      "dmlDql": "Return only the distinct custom antipattern names present in this query-oriented Java class.\n\n<analyzed_class>\nFILE_CONTENTS\n</analyzed_class>"
+    }
+  }
+}
+```
+
+The `antipatterns` list must contain at least one unique non-empty name. All four templates are required and must contain `FILE_CONTENTS`; `KEYS_CONTENTS` is optional. Model responses are validated against the configured names, so unknown antipattern names are rejected and retried like other structured-output validation failures.
 
 ## Build a native binary
 
